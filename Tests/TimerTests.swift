@@ -91,11 +91,14 @@ final class TimerTests: XCTestCase {
             ("Home-390", AnyView(HomeView()), CGSize(width: 390, height: 844)),
             ("Home-320", AnyView(HomeView()), CGSize(width: 320, height: 740)),
             ("Square-card", AnyView(DaysArtworkCard(settings: settings, remaining: remaining)), CGSize(width: 170, height: 170)),
-            ("Lock-art-only-NOT-system-rendering", AnyView(DaysArtworkCard(settings: settings, remaining: remaining, compact: true)), CGSize(width: 64, height: 64))
+            ("Lock-art-only-NOT-system-rendering", AnyView(DaysArtworkCard(settings: settings, remaining: remaining, compact: true)), CGSize(width: 64, height: 64)),
+            // Layout check only; the system applies vibrant rendering on the lock screen.
+            ("Lock-rect-170-RTL", AnyView(LockRectangularView(settings: settings, remaining: remaining).background(Color.indigo).environment(\.layoutDirection, .rightToLeft).environment(\.locale, Locale(identifier: "ar"))), CGSize(width: 170, height: 76)),
+            ("Lock-rect-158-RTL", AnyView(LockRectangularView(settings: settings, remaining: Remaining(target: settings.targetDate(), now: settings.targetDate().addingTimeInterval(-999 * 86400))).background(Color.indigo).environment(\.layoutDirection, .rightToLeft).environment(\.locale, Locale(identifier: "ar"))), CGSize(width: 158, height: 72))
         ]
         for (name, view, size) in cases {
             let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height).preferredColorScheme(.dark))
-            if name.contains("card") || name.hasPrefix("Lock-art") { controller.safeAreaRegions = [] }
+            if name.contains("card") || name.hasPrefix("Lock-") { controller.safeAreaRegions = [] }
             let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
             let window = UIWindow(windowScene: scene)
             window.frame = CGRect(origin: .zero, size: size)

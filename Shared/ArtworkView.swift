@@ -1,6 +1,7 @@
 import SwiftUI
 import UIKit
 import ImageIO
+import WidgetKit
 
 private enum ArtworkLoader {
     static let cache: NSCache<NSString, UIImage> = {
@@ -78,5 +79,51 @@ struct DaysArtworkCard: View {
         .clipShape(RoundedRectangle(cornerRadius: compact ? 8 : 22))
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(remaining.reached ? "وصل الموعد" : "\(settings.name)، \(remaining.days) يوم متبقٍ")
+    }
+}
+
+// Lock-screen accessoryRectangular content. Fills the whole rectangle; fixed
+// point sizes keep the layout stable, and vibrant mode makes artwork
+// unreadable here, so it is text only.
+struct LockRectangularView: View {
+    let settings: TimerSettings
+    let remaining: Remaining
+    var storageError = false
+    var body: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(settings.name)
+                        .font(.system(size: 14, weight: .bold))
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                    if remaining.reached {
+                        Text("وصل الموعد")
+                            .font(.system(size: 24, weight: .heavy, design: .rounded))
+                            .lineLimit(1).minimumScaleFactor(0.5)
+                    } else {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("\(remaining.days)")
+                                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                                .monospacedDigit()
+                                .widgetAccentable()
+                            Text("يوم متبقٍ").font(.system(size: 14, weight: .semibold))
+                        }
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                    }
+                    Group {
+                        if storageError { Text("تعذّرت قراءة الإعدادات") }
+                        else { Text(settings.targetDate(), format: .dateTime.day().month(.wide).year()) }
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 2)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
     }
 }

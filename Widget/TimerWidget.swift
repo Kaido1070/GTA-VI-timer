@@ -20,6 +20,9 @@ struct Provider: TimelineProvider {
     }
     private func read() -> TimerEntry {
         do { return TimerEntry(date: .now, settings: try SettingsStore.shared().load()) }
+        // Personal signing without an App Group is expected: the defaults are the
+        // intended target, so don't flag it on the widget. Warn only on bad data.
+        catch SettingsStore.Failure.groupUnavailable { return TimerEntry(date: .now, settings: TimerSettings()) }
         catch { return TimerEntry(date: .now, settings: TimerSettings(), storageError: true) }
     }
 }
@@ -45,7 +48,7 @@ struct TimerWidgetView: View {
                 }
                 .accessibilityLabel(remaining.reached ? "وصل الموعد" : "\(remaining.days) يوم متبقٍ")
             } else if family == .accessoryRectangular {
-                rectangular
+                LockRectangularView(settings: entry.settings, remaining: remaining, storageError: entry.storageError)
             } else if family == .systemSmall {
                 DaysArtworkCard(settings: entry.settings, remaining: remaining)
                     .overlay(alignment: .topTrailing) { refreshButton.padding(6) }
@@ -65,7 +68,7 @@ struct TimerWidgetView: View {
                                 .font(.system(size: family == .systemLarge ? 52 : 36, weight: .heavy, design: .rounded))
                                 .monospacedDigit().padding(8)
                                 .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
-                            if entry.storageError { Text("إعدادات افتراضية — لا توجد مشاركة").font(.caption) }
+                            if entry.storageError { Text("تعذّرت قراءة الإعدادات — افتراضية").font(.caption) }
                         }
                         .foregroundStyle(.white).shadow(color: .black, radius: 2).padding(16)
                     }
@@ -83,45 +86,6 @@ struct TimerWidgetView: View {
         }
         .containerBackground(for: .widget) { Color.black }
         .widgetURL(URL(string: "gtavitimer://countdown"))
-    }
-    // Fills the whole lock-screen rectangle. Fixed point sizes keep the layout
-    // stable; vibrant mode makes artwork unreadable here, so text only.
-    private var rectangular: some View {
-        ZStack {
-            AccessoryWidgetBackground()
-            HStack(spacing: 0) {
-                VStack(alignment: .leading, spacing: 0) {
-                    Text(entry.settings.name)
-                        .font(.system(size: 14, weight: .bold))
-                        .lineLimit(1).minimumScaleFactor(0.6)
-                    if remaining.reached {
-                        Text("وصل الموعد")
-                            .font(.system(size: 24, weight: .heavy, design: .rounded))
-                            .lineLimit(1).minimumScaleFactor(0.5)
-                    } else {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
-                            Text("\(remaining.days)")
-                                .font(.system(size: 30, weight: .heavy, design: .rounded))
-                                .monospacedDigit()
-                                .widgetAccentable()
-                            Text("يوم متبقٍ").font(.system(size: 14, weight: .semibold))
-                        }
-                        .lineLimit(1).minimumScaleFactor(0.5)
-                    }
-                    Group {
-                        if entry.storageError { Text("إعدادات افتراضية") }
-                        else { Text(entry.settings.targetDate(), format: .dateTime.day().month(.wide).year()) }
-                    }
-                    .font(.system(size: 12, weight: .medium))
-                    .lineLimit(1).minimumScaleFactor(0.6)
-                }
-                Spacer(minLength: 0)
-            }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 2)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .combine)
     }
     private var refreshButton: some View {
         Button(intent: RefreshCountdownIntent()) {

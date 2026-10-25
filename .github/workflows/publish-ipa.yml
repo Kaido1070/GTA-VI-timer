@@ -7,7 +7,7 @@ on:
         required: true
         default: '40231410786'
       tag:
-        description: Existing release tag
+        description: Release tag (created on the dispatched ref if missing)
         required: true
         default: v1.0.0
       version:
@@ -48,4 +48,6 @@ jobs:
         run: |
           test -f verified/build/GTA-VI-Timer-unsigned.ipa
           sha256sum verified/build/GTA-VI-Timer-unsigned.ipa
+          gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
+            gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "$RELEASE_TAG" --notes "Unsigned IPA from verified build run ${{ inputs.run_id }}."
           gh release upload "$RELEASE_TAG" verified/build/GTA-VI-Timer-unsigned.ipa --clobber
