@@ -53,7 +53,7 @@ struct TimerWidgetView: View {
                     VStack(alignment: .leading, spacing: 3) {
                         Text(entry.settings.name).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
                         Text(remaining.reached ? "وصل الموعد" : "\(remaining.days) يوم متبقٍ").font(.caption)
-                        if entry.storageError { Text("افتح التطبيق لإصلاح المشاركة").font(.caption2) }
+                        if entry.storageError { Text("إعدادات افتراضية").font(.caption2) }
                     }
                 }
             } else if family == .systemSmall {
@@ -65,7 +65,7 @@ struct TimerWidgetView: View {
             } else {
                 GeometryReader { geometry in
                     ZStack(alignment: .topLeading) {
-                        ArtworkView(settings: entry.settings)
+                        ArtworkView(settings: entry.settings, maximumPixelSize: 800, blurredFill: false)
                         LinearGradient(colors: [.black.opacity(0.65), .clear], startPoint: .top, endPoint: .center)
                         VStack(alignment: .leading, spacing: 4) {
                             Text(entry.settings.name).font(.title2.bold())
@@ -75,7 +75,7 @@ struct TimerWidgetView: View {
                                 .font(.system(size: family == .systemLarge ? 52 : 36, weight: .heavy, design: .rounded))
                                 .monospacedDigit().padding(8)
                                 .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
-                            if entry.storageError { Text("افتح التطبيق لإصلاح App Group").font(.caption) }
+                            if entry.storageError { Text("إعدادات افتراضية — لا توجد مشاركة").font(.caption) }
                         }
                         .foregroundStyle(.white).shadow(color: .black, radius: 2).padding(16)
                     }

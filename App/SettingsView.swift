@@ -53,7 +53,7 @@ struct SettingsView: View {
                         .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("التخزين والودجت") {
-                    Text("البيانات والصورة محفوظة محليًا في App Group مشتركة فقط. يطلب الحفظ تحديث الودجت، ويقرر iOS وقت تنفيذ التحديث. قد يعرض ودجت شاشة القفل الصورة بلون موحّد.")
+                    Text("عند توفر App Group، تشترك الإعدادات والصورة مع الودجت. عند غيابها تُحفظ داخل التطبيق فقط، ويظل الودجت على GTA VI و19 نوفمبر 2026 والصورة المضمّنة. يقرر iOS وقت تحديث الودجت وقد يعرض صورة القفل بلون موحّد.")
                         .font(.footnote)
                 }
                 if let error { Section { Text(error).foregroundStyle(.orange) } }
@@ -102,7 +102,7 @@ struct SettingsView: View {
         draft.name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
         if resetImage { draft.imageFilename = nil }
         do {
-            let saved = try SettingsStore.shared().save(draft, newJPEG: jpeg)
+            let saved = try SettingsStore.available().save(draft, newJPEG: jpeg)
             WidgetCenter.shared.reloadAllTimelines()
             draft = saved; jpeg = nil; resetImage = false
             await LiveCountdownController.reconcile(settings: saved)

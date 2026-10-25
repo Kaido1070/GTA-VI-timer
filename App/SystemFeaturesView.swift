@@ -41,6 +41,10 @@ struct SystemFeaturesView: View {
                 Link("فتح إعدادات iOS للتطبيق", destination: URL(string: UIApplication.openSettingsURLString)!)
             }
             Section("الودجت ومركز التحكم") {
+                if (try? SettingsStore.available().scope) == .applicationOnly {
+                    Text("لا تتوفر App Group في التوقيع الحالي: يمكنك حفظ إعدادات التطبيق، لكن الودجت سيبقى على الموعد والصورة الافتراضيين.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Text("الشاشة الرئيسية: صغير ومتوسط وكبير، مع زر تحديث تفاعلي. اضغط على الودجت لفتح العدّاد؛ اضغط على أيقونة الإعدادات في الأحجام الكبيرة لتعديل الموعد.")
                 Text("شاشة القفل: مستطيل بصورة وعدد فوقها، ودائري ومختصر نصي. قد يحوّل iOS الصورة إلى لون موحّد.")
                 if #available(iOS 18.0, *) {

@@ -11,7 +11,32 @@ struct SettingsStore {
             }
         }
     }
+    enum Scope { case shared, applicationOnly }
     let root: URL
+    let scope: Scope
+    init(root: URL, scope: Scope = .shared) { self.root = root; self.scope = scope }
+
+    // Personal signing may strip / disallow App Groups. Keep app editing usable
+    // without claiming that the widget can read this private container.
+    static func available() throws -> SettingsStore {
+        let local = try FileManager.default.url(for: .applicationSupportDirectory, in: .userDomainMask, appropriateFor: nil, create: true)
+            .appendingPathComponent("TimerSettings", isDirectory: true)
+        return try select(sharedRoot: (try? shared())?.root, localRoot: local)
+    }
+
+    static func select(sharedRoot: URL?, localRoot: URL) throws -> SettingsStore {
+        let local = SettingsStore(root: localRoot, scope: .applicationOnly)
+        guard let sharedRoot else { return local }
+        let store = SettingsStore(root: sharedRoot)
+        // Migrate only into an empty shared store after a later signing upgrade.
+        if !FileManager.default.fileExists(atPath: sharedRoot.appendingPathComponent("settings.json").path),
+           FileManager.default.fileExists(atPath: localRoot.appendingPathComponent("settings.json").path) {
+            let settings = try local.load()
+            let jpeg = try local.imageURL(for: settings).map { try Data(contentsOf: $0) }
+            try store.save(settings, newJPEG: jpeg)
+        }
+        return store
+    }
 
     static func shared() throws -> SettingsStore {
         guard let group = Bundle.main.object(forInfoDictionaryKey: "AppGroupIdentifier") as? String,

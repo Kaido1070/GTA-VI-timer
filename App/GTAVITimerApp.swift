@@ -15,6 +15,7 @@ struct HomeView: View {
     @State private var settings = TimerSettings()
     @State private var error: String?
     @State private var editing = false
+    @State private var localOnly = false
     private let turquoise = Color(red: 0.26, green: 0.76, blue: 0.80)
 
     var body: some View {
@@ -24,6 +25,11 @@ struct HomeView: View {
                     if let error {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .font(.callout).foregroundStyle(.orange).padding()
+                    }
+                    if localOnly {
+                        Text("الحفظ داخل التطبيق فقط. الودجت يستخدم GTA VI و19 نوفمبر 2026 والصورة المضمّنة حتى تتوفر مشاركة App Group.")
+                            .font(.footnote).foregroundStyle(.secondary).padding(10)
+                            .background(Color(white: 0.08), in: RoundedRectangle(cornerRadius: 14))
                     }
                     ZStack(alignment: .bottomLeading) {
                         ArtworkView(settings: settings)
@@ -120,13 +126,16 @@ struct HomeView: View {
     }
 
     private func reconcileIntegrations() async {
-        guard let saved = try? SettingsStore.shared().load() else { return }
+        guard let saved = try? SettingsStore.available().load() else { return }
         await LiveCountdownController.reconcile(settings: saved)
         try? await NotificationManager.apply(settings: saved, requestPermission: false)
     }
 
     private func reload() {
-        do { settings = try SettingsStore.shared().load(); error = nil }
+        do {
+            let store = try SettingsStore.available()
+            settings = try store.load(); localOnly = store.scope == .applicationOnly; error = nil
+        }
         catch { self.error = error.localizedDescription }
     }
 }

@@ -1,21 +1,47 @@
 import SwiftUI
 import UIKit
+import ImageIO
+
+private enum ArtworkLoader {
+    static let cache: NSCache<NSString, UIImage> = {
+        let cache = NSCache<NSString, UIImage>()
+        cache.totalCostLimit = 12 * 1024 * 1024
+        cache.countLimit = 4
+        return cache
+    }()
+    static func load(settings: TimerSettings, maximumPixelSize: Int) -> UIImage? {
+        var url = Bundle.main.url(forResource: "Artwork", withExtension: "jpg")
+        if settings.imageFilename != nil,
+           let store = try? SettingsStore.available(),
+           let saved = try? store.imageURL(for: settings),
+           FileManager.default.fileExists(atPath: saved.path) { url = saved }
+        guard let url else { return UIImage(named: "Artwork") }
+        let key = "\(url.path)-\(maximumPixelSize)" as NSString
+        if let cached = cache.object(forKey: key) { return cached }
+        guard let source = CGImageSourceCreateWithURL(url as CFURL, [kCGImageSourceShouldCache: false] as CFDictionary),
+              let cgImage = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                kCGImageSourceCreateThumbnailFromImageAlways: true,
+                kCGImageSourceCreateThumbnailWithTransform: true,
+                kCGImageSourceThumbnailMaxPixelSize: maximumPixelSize,
+                kCGImageSourceShouldCacheImmediately: true
+              ] as CFDictionary) else { return UIImage(named: "Artwork") }
+        let image = UIImage(cgImage: cgImage)
+        cache.setObject(image, forKey: key, cost: cgImage.bytesPerRow * cgImage.height)
+        return image
+    }
+}
 
 struct ArtworkView: View {
     let settings: TimerSettings
-    var image: UIImage? {
-        guard let store = try? SettingsStore.shared(),
-              let url = try? store.imageURL(for: settings) else { return nil }
-        return UIImage(contentsOfFile: url.path)
-    }
+    var maximumPixelSize = 1200
+    var blurredFill = true
     var body: some View {
         GeometryReader { geometry in
-            // Fit the complete artwork to retain both characters and the logo.
-            // A blurred fill behind it avoids hard letterboxing on square widgets.
-            let artwork = image.map { Image(uiImage: $0) } ?? Image("Artwork")
+            let artwork = ArtworkLoader.load(settings: settings, maximumPixelSize: maximumPixelSize)
+                .map { Image(uiImage: $0) } ?? Image("Artwork")
             ZStack {
-                artwork.resizable().scaledToFill().blur(radius: 18).opacity(0.6)
-                Color.black.opacity(0.15)
+                Color.black
+                if blurredFill { artwork.resizable().scaledToFill().blur(radius: 18).opacity(0.6) }
                 artwork.resizable().scaledToFit()
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
@@ -31,12 +57,15 @@ struct DaysArtworkCard: View {
     var compact = false
     var body: some View {
         ZStack(alignment: .bottom) {
-            ArtworkView(settings: settings)
+            // Decode only a thumbnail and avoid a second blurred surface in the
+            // memory-constrained widget extension. Keep the original file intact.
+            ArtworkView(settings: settings, maximumPixelSize: compact ? 240 : 600, blurredFill: false)
             VStack(spacing: 0) {
                 if remaining.reached {
                     Text("وصل الموعد").font(.headline)
                 } else {
-                    Text("\(remaining.days)").font(.system(size: compact ? 26 : 48, weight: .heavy, design: .rounded)).monospacedDigit()
+                    Text("\(remaining.days)").font(.system(size: compact ? 26 : 48, weight: .heavy, design: .rounded))
+                        .monospacedDigit().lineLimit(1).minimumScaleFactor(0.4)
                     Text("يوم").font(compact ? .caption2 : .headline)
                 }
             }
