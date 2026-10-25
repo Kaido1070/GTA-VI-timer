@@ -16,7 +16,7 @@ open GTAVITimer.xcodeproj
 bash Scripts/build-unsigned.sh
 ```
 
-ينتج `build/GTA-VI-Timer-unsigned.ipa` بعد التأكد من وجود `PlugIns/TimerWidget.appex` والملف التنفيذي. **IPA غير الموقّعة لا تُثبّت مباشرة**. مسار GitHub Actions يدوي من Actions > iOS manual build > Run workflow؛ ينفذ اختبارات المحاكي، بناء الجهاز، ويحفظ الأدلة والمشروع وIPA لمدة 14 يومًا. لا يحتاج شهادات ولا يضعها في السجلات. حالة التنفيذ الفعلية موثقة في `VERIFICATION.md`.
+ينتج `build/GTA-VI-Timer-unsigned.ipa` بعد التأكد من وجود `PlugIns/TimerWidget.appex` والملف التنفيذي. **IPA غير الموقّعة لا تُثبّت مباشرة**. مسار GitHub Actions يدوي من Actions > iOS manual build > Run workflow؛ ينفذ اختبارات المحاكي، بناء الجهاز، ويحفظ الأدلة والمشروع وIPA لمدة 14 يومًا. لا يحتاج شهادات ولا يضعها في السجلات. حالة التنفيذ الفعلية وروابط تحميل IPA والأدلة موثقة في [VERIFICATION.md](VERIFICATION.md). نجح بناء IPA غير موقعة واختبارات المحاكي. خيار `rendering` في workflow يعيد اختبار العرض وحده دون إعادة بناء نسخة الأجهزة.
 
 ## التوقيع والتثبيت
 
