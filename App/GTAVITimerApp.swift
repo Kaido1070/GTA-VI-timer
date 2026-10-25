@@ -78,6 +78,8 @@ struct HomeView: View {
             .navigationTitle("GTA VI Timer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
+                NavigationLink { SystemFeaturesView(settings: settings) } label: { Image(systemName: "sparkles") }
+                    .accessibilityLabel("مزايا iOS")
                 Button { editing = true } label: { Image(systemName: "gearshape") }
                     .accessibilityLabel("الإعدادات")
             }
@@ -88,11 +90,20 @@ struct HomeView: View {
                 }
             }
             .onAppear(perform: reload)
+            .task { await reconcileIntegrations() }
+            .onOpenURL { url in
+                guard url.scheme == "gtavitimer" else { return }
+                editing = url.host == "settings"
+            }
             .onChange(of: phase) { _, value in
-                if value == .active { reload(); WidgetCenter.shared.reloadAllTimelines() }
+                if value == .active {
+                    reload(); WidgetCenter.shared.reloadAllTimelines()
+                    Task { await reconcileIntegrations() }
+                }
             }
             .onReceive(NotificationCenter.default.publisher(for: .NSSystemTimeZoneDidChange)) { _ in
                 reload(); WidgetCenter.shared.reloadAllTimelines()
+                Task { await reconcileIntegrations() }
             }
         }
         .tint(turquoise)
@@ -106,6 +117,12 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity)
         .accessibilityElement(children: .combine)
+    }
+
+    private func reconcileIntegrations() async {
+        guard let saved = try? SettingsStore.shared().load() else { return }
+        await LiveCountdownController.reconcile(settings: saved)
+        try? await NotificationManager.apply(settings: saved, requestPermission: false)
     }
 
     private func reload() {

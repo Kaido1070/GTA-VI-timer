@@ -1,5 +1,6 @@
 import SwiftUI
 import WidgetKit
+import AppIntents
 
 struct TimerEntry: TimelineEntry {
     let date: Date
@@ -29,7 +30,21 @@ struct TimerWidgetView: View {
     var remaining: Remaining { Remaining(target: entry.settings.targetDate(), now: entry.date) }
     var body: some View {
         Group {
-            if family == .accessoryRectangular {
+            if family == .accessoryInline {
+                Label(remaining.reached ? "وصل الموعد" : "\(entry.settings.name): \(remaining.days) يوم", systemImage: "hourglass")
+            } else if family == .accessoryCircular {
+                ZStack {
+                    AccessoryWidgetBackground()
+                    VStack(spacing: 0) {
+                        if remaining.reached { Image(systemName: "checkmark").font(.title2) }
+                        else {
+                            Text("\(remaining.days)").font(.system(size: 23, weight: .heavy, design: .rounded)).minimumScaleFactor(0.5).lineLimit(1)
+                            Text("يوم").font(.caption2)
+                        }
+                    }.padding(5)
+                }
+                .accessibilityLabel(remaining.reached ? "وصل الموعد" : "\(remaining.days) يوم متبقٍ")
+            } else if family == .accessoryRectangular {
                 HStack(spacing: 8) {
                     // Real accessory family: the system renders the image vibrantly,
                     // usually monochrome. No promise of full-color lock-screen art.
@@ -43,6 +58,7 @@ struct TimerWidgetView: View {
                 }
             } else if family == .systemSmall {
                 DaysArtworkCard(settings: entry.settings, remaining: remaining)
+                    .overlay(alignment: .topTrailing) { refreshButton.padding(6) }
                     .overlay(alignment: .topLeading) {
                         if entry.storageError { Image(systemName: "exclamationmark.triangle.fill").padding(8).foregroundStyle(.orange) }
                     }
@@ -62,22 +78,49 @@ struct TimerWidgetView: View {
                             if entry.storageError { Text("افتح التطبيق لإصلاح App Group").font(.caption) }
                         }
                         .foregroundStyle(.white).shadow(color: .black, radius: 2).padding(16)
-                    }.frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                    }
+                    .overlay(alignment: .topTrailing) {
+                        HStack(spacing: 10) {
+                            refreshButton
+                            Link(destination: URL(string: "gtavitimer://settings")!) {
+                                Image(systemName: "gearshape.fill").padding(5).background(.black.opacity(0.5), in: Circle())
+                            }.accessibilityLabel("إعدادات العدّاد")
+                        }.foregroundStyle(.white).padding(8)
+                    }
+                    .frame(width: geometry.size.width, height: geometry.size.height).clipped()
                 }
             }
         }
         .containerBackground(for: .widget) { Color.black }
+        .widgetURL(URL(string: "gtavitimer://countdown"))
+    }
+    private var refreshButton: some View {
+        Button(intent: RefreshCountdownIntent()) {
+            Image(systemName: "arrow.clockwise").font(.caption.bold()).foregroundStyle(.white)
+                .padding(6).background(.black.opacity(0.5), in: Circle())
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("تحديث العدّاد من الإعدادات المحلية")
     }
 }
 
-@main
 struct TimerWidget: Widget {
     let kind = "GTAVITimerWidget"
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: Provider()) { TimerWidgetView(entry: $0) }
             .configurationDisplayName("GTA VI Timer")
             .description("الأيام الكاملة المتبقية حتى بداية الموعد المحلي.")
-            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
+            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryCircular, .accessoryInline])
             .contentMarginsDisabled()
+    }
+}
+
+
+@main
+struct CountdownWidgetBundle: WidgetBundle {
+    var body: some Widget {
+        TimerWidget()
+        LiveCountdownWidget()
+        if #available(iOS 18.0, *) { TimerControl() }
     }
 }

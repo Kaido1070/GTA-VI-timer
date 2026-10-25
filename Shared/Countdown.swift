@@ -6,6 +6,8 @@ struct TimerSettings: Codable, Equatable {
     var month = 11
     var day = 19
     var imageFilename: String?
+    var reminders: ReminderMode?
+    var reminderMode: ReminderMode { reminders ?? .off }
 
     // Persist a civil date, never an absolute UTC timestamp. Re-evaluate in the
     // device's current timezone, including after travel / a timezone change.
@@ -39,6 +41,10 @@ struct Remaining: Equatable {
         hours = (total % 86_400) / 3_600
         minutes = (total % 3_600) / 60
         seconds = total % 60
+    }
+
+    func summary(name: String) -> String {
+        reached ? "\(name): وصل الموعد" : "\(name): باقي \(days) يوم و\(hours) ساعة و\(minutes) دقيقة و\(seconds) ثانية."
     }
 }
 

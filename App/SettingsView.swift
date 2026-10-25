@@ -11,6 +11,7 @@ struct SettingsView: View {
     @State private var jpeg: Data?
     @State private var resetImage = false
     @State private var loading = false
+    @State private var saving = false
     @State private var error: String?
     let onSave: (TimerSettings) -> Void
 
@@ -44,6 +45,13 @@ struct SettingsView: View {
                         resetImage = true; jpeg = nil; selection = nil
                     }
                 }
+                Section("التنبيهات الاختيارية") {
+                    Picker("التذكير", selection: Binding(get: { draft.reminderMode }, set: { draft.reminders = $0 })) {
+                        ForEach(ReminderMode.allCases) { mode in Text(mode.title).tag(mode) }
+                    }
+                    Text("تنبيهات محلية فقط، متوقفة افتراضيًا. عند التفعيل والحفظ سيطلب النظام الإذن. قد تؤخرها إعدادات التركيز أو ملخص الإشعارات.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
                 Section("التخزين والودجت") {
                     Text("البيانات والصورة محفوظة محليًا في App Group مشتركة فقط. يطلب الحفظ تحديث الودجت، ويقرر iOS وقت تنفيذ التحديث. قد يعرض ودجت شاشة القفل الصورة بلون موحّد.")
                         .font(.footnote)
@@ -53,7 +61,7 @@ struct SettingsView: View {
             .navigationTitle("الإعدادات")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("إلغاء") { dismiss() } }
-                ToolbarItem(placement: .confirmationAction) { Button("حفظ", action: save).disabled(loading) }
+                ToolbarItem(placement: .confirmationAction) { Button("حفظ") { Task { await save() } }.disabled(loading || saving) }
             }
             .task(id: selection) {
                 guard let selection else { return }
@@ -84,7 +92,9 @@ struct SettingsView: View {
         return value
     }
 
-    private func save() {
+    @MainActor private func save() async {
+        saving = true
+        defer { saving = false }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = .current
         let components = calendar.dateComponents([.year, .month, .day], from: date)
@@ -94,7 +104,14 @@ struct SettingsView: View {
         do {
             let saved = try SettingsStore.shared().save(draft, newJPEG: jpeg)
             WidgetCenter.shared.reloadAllTimelines()
+            draft = saved; jpeg = nil; resetImage = false
+            await LiveCountdownController.reconcile(settings: saved)
             onSave(saved)
+            do { try await NotificationManager.apply(settings: saved, requestPermission: true) }
+            catch {
+                self.error = "حُفظت الإعدادات، لكن التذكير لم يكتمل: \(error.localizedDescription)"
+                return
+            }
             dismiss()
         } catch { self.error = error.localizedDescription }
     }
