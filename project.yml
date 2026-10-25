@@ -25,6 +25,8 @@ targets:
       path: App/Info.plist
       properties:
         CFBundleDisplayName: GTA VI Timer
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         NSSupportsLiveActivities: true
         CFBundleURLTypes:
@@ -55,6 +57,8 @@ targets:
       path: Widget/Info.plist
       properties:
         CFBundleDisplayName: GTA VI Timer
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         AppGroupIdentifier: $(APP_GROUP_IDENTIFIER)
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension

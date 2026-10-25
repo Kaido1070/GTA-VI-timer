@@ -10,6 +10,14 @@ on:
         description: Existing release tag
         required: true
         default: v1.0.0
+      version:
+        description: Optional bundle metadata version for unsigned package
+        required: false
+        default: ''
+      build_number:
+        description: Optional bundle build number
+        required: false
+        default: ''
 permissions:
   contents: write
   actions: read
@@ -17,17 +25,27 @@ jobs:
   publish:
     runs-on: ubuntu-latest
     steps:
+      - uses: actions/checkout@v4
       - uses: actions/download-artifact@v4
         with:
           name: ios-build-evidence
           run-id: ${{ inputs.run_id }}
           github-token: ${{ github.token }}
           path: verified
-      - name: Upload original verified IPA
+      - name: Align unsigned bundle metadata if requested
+        env:
+          BUNDLE_VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          if [ -n "$BUNDLE_VERSION" ] && [ -n "$BUILD_NUMBER" ]; then
+            python3 Scripts/version-unsigned-ipa.py verified/build/GTA-VI-Timer-unsigned.ipa --version "$BUNDLE_VERSION" --build "$BUILD_NUMBER"
+          fi
+      - name: Upload verified unsigned IPA
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_TAG: ${{ inputs.tag }}
           GH_REPO: Kaido1070/GTA-VI-timer
         run: |
           test -f verified/build/GTA-VI-Timer-unsigned.ipa
+          sha256sum verified/build/GTA-VI-Timer-unsigned.ipa
           gh release upload "$RELEASE_TAG" verified/build/GTA-VI-Timer-unsigned.ipa --clobber
