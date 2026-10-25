@@ -128,7 +128,11 @@ struct HomeView: View {
     private func reconcileIntegrations() async {
         guard let saved = try? SettingsStore.available().load() else { return }
         await LiveCountdownController.reconcile(settings: saved)
-        try? await NotificationManager.apply(settings: saved, requestPermission: false)
+        // With reminders off, foreground launch should not contact the
+        // notification daemon. Explicitly saving Off clears old requests.
+        if saved.reminderMode != .off {
+            try? await NotificationManager.apply(settings: saved, requestPermission: false)
+        }
     }
 
     private func reload() {
