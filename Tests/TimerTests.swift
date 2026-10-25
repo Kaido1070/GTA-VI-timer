@@ -95,6 +95,7 @@ final class TimerTests: XCTestCase {
         ]
         for (name, view, size) in cases {
             let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height).preferredColorScheme(.dark))
+            if name.contains("card") || name.hasPrefix("Lock-art") { controller.safeAreaRegions = [] }
             let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
             let window = UIWindow(windowScene: scene)
             window.frame = CGRect(origin: .zero, size: size)
