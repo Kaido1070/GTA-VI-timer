@@ -1,0 +1,101 @@
+import SwiftUI
+import PhotosUI
+import WidgetKit
+import ImageIO
+
+struct SettingsView: View {
+    @Environment(\.dismiss) private var dismiss
+    @State private var draft: TimerSettings
+    @State private var date: Date
+    @State private var selection: PhotosPickerItem?
+    @State private var jpeg: Data?
+    @State private var resetImage = false
+    @State private var loading = false
+    @State private var error: String?
+    let onSave: (TimerSettings) -> Void
+
+    init(initial: TimerSettings, onSave: @escaping (TimerSettings) -> Void) {
+        _draft = State(initialValue: initial)
+        _date = State(initialValue: initial.targetDate())
+        self.onSave = onSave
+    }
+
+    var body: some View {
+        NavigationStack {
+            Form {
+                Section("الموعد") {
+                    TextField("اسم اللعبة", text: $draft.name)
+                    DatePicker("التاريخ", selection: $date, displayedComponents: .date)
+                    Text("الاستهداف: بداية اليوم المختار، الساعة 00:00 حسب المنطقة الزمنية المحلية للجهاز (\(TimeZone.current.identifier)). اليوم المتبقي = 24 ساعة كاملة من المدة الفعلية؛ قد تؤثر تغييرات التوقيت الصيفي.")
+                        .font(.footnote).foregroundStyle(.secondary)
+                }
+                Section("الخلفية") {
+                    PhotosPicker(selection: $selection, matching: .images) {
+                        Label("اختيار صورة من الألبوم", systemImage: "photo")
+                    }
+                    .disabled(loading)
+                    if loading { ProgressView("جارٍ تجهيز الصورة…") }
+                    if let jpeg, let image = UIImage(data: jpeg) {
+                        Image(uiImage: image).resizable().scaledToFit().frame(maxHeight: 220)
+                    } else {
+                        ArtworkView(settings: previewSettings).frame(height: 220)
+                    }
+                    Button("استعادة صورة GTA VI المضمّنة") {
+                        resetImage = true; jpeg = nil; selection = nil
+                    }
+                }
+                Section("التخزين والودجت") {
+                    Text("البيانات والصورة محفوظة محليًا في App Group مشتركة فقط. يطلب الحفظ تحديث الودجت، ويقرر iOS وقت تنفيذ التحديث. قد يعرض ودجت شاشة القفل الصورة بلون موحّد.")
+                        .font(.footnote)
+                }
+                if let error { Section { Text(error).foregroundStyle(.orange) } }
+            }
+            .navigationTitle("الإعدادات")
+            .toolbar {
+                ToolbarItem(placement: .cancellationAction) { Button("إلغاء") { dismiss() } }
+                ToolbarItem(placement: .confirmationAction) { Button("حفظ", action: save).disabled(loading) }
+            }
+            .task(id: selection) {
+                guard let selection else { return }
+                loading = true
+                defer { loading = false }
+                do {
+                    guard let data = try await selection.loadTransferable(type: Data.self),
+                          let source = CGImageSourceCreateWithData(data as CFData, nil),
+                          let image = CGImageSourceCreateThumbnailAtIndex(source, 0, [
+                            kCGImageSourceCreateThumbnailFromImageAlways: true,
+                            kCGImageSourceCreateThumbnailWithTransform: true,
+                            kCGImageSourceThumbnailMaxPixelSize: 1600
+                          ] as CFDictionary),
+                          let converted = UIImage(cgImage: image).jpegData(compressionQuality: 0.88) else {
+                        throw CocoaError(.fileReadCorruptFile)
+                    }
+                    try Task.checkCancellation()
+                    jpeg = converted; resetImage = false; error = nil
+                } catch is CancellationError { }
+                catch { self.error = "تعذّر تجهيز الصورة: \(error.localizedDescription)" }
+            }
+        }
+    }
+
+    private var previewSettings: TimerSettings {
+        var value = draft
+        if resetImage { value.imageFilename = nil }
+        return value
+    }
+
+    private func save() {
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = .current
+        let components = calendar.dateComponents([.year, .month, .day], from: date)
+        draft.year = components.year!; draft.month = components.month!; draft.day = components.day!
+        draft.name = draft.name.trimmingCharacters(in: .whitespacesAndNewlines)
+        if resetImage { draft.imageFilename = nil }
+        do {
+            let saved = try SettingsStore.shared().save(draft, newJPEG: jpeg)
+            WidgetCenter.shared.reloadAllTimelines()
+            onSave(saved)
+            dismiss()
+        } catch { self.error = error.localizedDescription }
+    }
+}

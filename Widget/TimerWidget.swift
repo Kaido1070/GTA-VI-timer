@@ -1,0 +1,83 @@
+import SwiftUI
+import WidgetKit
+
+struct TimerEntry: TimelineEntry {
+    let date: Date
+    let settings: TimerSettings
+    var storageError = false
+}
+
+struct Provider: TimelineProvider {
+    func placeholder(in context: Context) -> TimerEntry { TimerEntry(date: .now, settings: TimerSettings()) }
+    func getSnapshot(in context: Context, completion: @escaping (TimerEntry) -> Void) { completion(read()) }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TimerEntry>) -> Void) {
+        let initial = read()
+        let entries = CountdownSchedule.dates(now: initial.date, target: initial.settings.targetDate()).map {
+            TimerEntry(date: $0, settings: initial.settings, storageError: initial.storageError)
+        }
+        completion(Timeline(entries: entries, policy: .after(initial.date.addingTimeInterval(6 * 3600))))
+    }
+    private func read() -> TimerEntry {
+        do { return TimerEntry(date: .now, settings: try SettingsStore.shared().load()) }
+        catch { return TimerEntry(date: .now, settings: TimerSettings(), storageError: true) }
+    }
+}
+
+struct TimerWidgetView: View {
+    @Environment(\.widgetFamily) private var family
+    let entry: TimerEntry
+    var remaining: Remaining { Remaining(target: entry.settings.targetDate(), now: entry.date) }
+    var body: some View {
+        Group {
+            if family == .accessoryRectangular {
+                HStack(spacing: 8) {
+                    // Real accessory family: the system renders the image vibrantly,
+                    // usually monochrome. No promise of full-color lock-screen art.
+                    DaysArtworkCard(settings: entry.settings, remaining: remaining, compact: true)
+                        .frame(width: 64, height: 64)
+                    VStack(alignment: .leading, spacing: 3) {
+                        Text(entry.settings.name).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
+                        Text(remaining.reached ? "وصل الموعد" : "\(remaining.days) يوم متبقٍ").font(.caption)
+                        if entry.storageError { Text("افتح التطبيق لإصلاح المشاركة").font(.caption2) }
+                    }
+                }
+            } else if family == .systemSmall {
+                DaysArtworkCard(settings: entry.settings, remaining: remaining)
+                    .overlay(alignment: .topLeading) {
+                        if entry.storageError { Image(systemName: "exclamationmark.triangle.fill").padding(8).foregroundStyle(.orange) }
+                    }
+            } else {
+                GeometryReader { geometry in
+                    ZStack(alignment: .topLeading) {
+                        ArtworkView(settings: entry.settings)
+                        LinearGradient(colors: [.black.opacity(0.65), .clear], startPoint: .top, endPoint: .center)
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text(entry.settings.name).font(.title2.bold())
+                            Text(entry.settings.targetDate(), format: .dateTime.day().month().year()).font(.caption)
+                            Spacer()
+                            Text(remaining.reached ? "وصل الموعد" : "\(remaining.days) يوم")
+                                .font(.system(size: family == .systemLarge ? 52 : 36, weight: .heavy, design: .rounded))
+                                .monospacedDigit().padding(8)
+                                .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
+                            if entry.storageError { Text("افتح التطبيق لإصلاح App Group").font(.caption) }
+                        }
+                        .foregroundStyle(.white).shadow(color: .black, radius: 2).padding(16)
+                    }.frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                }
+            }
+        }
+        .containerBackground(for: .widget) { Color.black }
+    }
+}
+
+@main
+struct TimerWidget: Widget {
+    let kind = "GTAVITimerWidget"
+    var body: some WidgetConfiguration {
+        StaticConfiguration(kind: kind, provider: Provider()) { TimerWidgetView(entry: $0) }
+            .configurationDisplayName("GTA VI Timer")
+            .description("الأيام الكاملة المتبقية حتى بداية الموعد المحلي.")
+            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular])
+            .contentMarginsDisabled()
+    }
+}
