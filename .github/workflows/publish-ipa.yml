@@ -1,0 +1,33 @@
+name: Publish verified unsigned IPA
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful full iOS build run ID
+        required: true
+        default: '40231410786'
+      tag:
+        description: Existing release tag
+        required: true
+        default: v1.0.0
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: ios-build-evidence
+          run-id: ${{ inputs.run_id }}
+          github-token: ${{ github.token }}
+          path: verified
+      - name: Upload original verified IPA
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          GH_REPO: Kaido1070/GTA-VI-timer
+        run: |
+          test -f verified/build/GTA-VI-Timer-unsigned.ipa
+          gh release upload "$RELEASE_TAG" verified/build/GTA-VI-Timer-unsigned.ipa --clobber
