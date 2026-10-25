@@ -45,17 +45,7 @@ struct TimerWidgetView: View {
                 }
                 .accessibilityLabel(remaining.reached ? "وصل الموعد" : "\(remaining.days) يوم متبقٍ")
             } else if family == .accessoryRectangular {
-                HStack(spacing: 8) {
-                    // Real accessory family: the system renders the image vibrantly,
-                    // usually monochrome. No promise of full-color lock-screen art.
-                    DaysArtworkCard(settings: entry.settings, remaining: remaining, compact: true)
-                        .frame(width: 64, height: 64)
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text(entry.settings.name).font(.headline).lineLimit(1).minimumScaleFactor(0.7)
-                        Text(remaining.reached ? "وصل الموعد" : "\(remaining.days) يوم متبقٍ").font(.caption)
-                        if entry.storageError { Text("إعدادات افتراضية").font(.caption2) }
-                    }
-                }
+                rectangular
             } else if family == .systemSmall {
                 DaysArtworkCard(settings: entry.settings, remaining: remaining)
                     .overlay(alignment: .topTrailing) { refreshButton.padding(6) }
@@ -93,6 +83,45 @@ struct TimerWidgetView: View {
         }
         .containerBackground(for: .widget) { Color.black }
         .widgetURL(URL(string: "gtavitimer://countdown"))
+    }
+    // Fills the whole lock-screen rectangle. Fixed point sizes keep the layout
+    // stable; vibrant mode makes artwork unreadable here, so text only.
+    private var rectangular: some View {
+        ZStack {
+            AccessoryWidgetBackground()
+            HStack(spacing: 0) {
+                VStack(alignment: .leading, spacing: 0) {
+                    Text(entry.settings.name)
+                        .font(.system(size: 14, weight: .bold))
+                        .lineLimit(1).minimumScaleFactor(0.6)
+                    if remaining.reached {
+                        Text("وصل الموعد")
+                            .font(.system(size: 24, weight: .heavy, design: .rounded))
+                            .lineLimit(1).minimumScaleFactor(0.5)
+                    } else {
+                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                            Text("\(remaining.days)")
+                                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                                .monospacedDigit()
+                                .widgetAccentable()
+                            Text("يوم متبقٍ").font(.system(size: 14, weight: .semibold))
+                        }
+                        .lineLimit(1).minimumScaleFactor(0.5)
+                    }
+                    Group {
+                        if entry.storageError { Text("إعدادات افتراضية") }
+                        else { Text(entry.settings.targetDate(), format: .dateTime.day().month(.wide).year()) }
+                    }
+                    .font(.system(size: 12, weight: .medium))
+                    .lineLimit(1).minimumScaleFactor(0.6)
+                }
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, 10)
+            .padding(.vertical, 2)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .accessibilityElement(children: .combine)
     }
     private var refreshButton: some View {
         Button(intent: RefreshCountdownIntent()) {
