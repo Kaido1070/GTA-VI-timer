@@ -16,7 +16,7 @@ jobs:
       - name: Build and test on iOS Simulator
         run: |
           DEVICE=$(xcrun simctl list devices available -j | python3 -c 'import sys,json; d=json.load(sys.stdin); print(next(x["udid"] for k,v in d["devices"].items() if "iOS" in k for x in v if x["name"].startswith("iPhone")))')
-          xcodebuild test -project GTAVITimer.xcodeproj -scheme GTAVITimer -destination "platform=iOS Simulator,id=$DEVICE" -derivedDataPath build/simulator -resultBundlePath build/Tests.xcresult CODE_SIGNING_ALLOWED=NO
+          xcodebuild test -project GTAVITimer.xcodeproj -scheme GTAVITimer -destination "platform=iOS Simulator,id=$DEVICE" -parallel-testing-enabled NO -derivedDataPath build/simulator -resultBundlePath build/Tests.xcresult CODE_SIGNING_ALLOWED=NO
       - name: Build unsigned device app and package IPA
         run: bash Scripts/build-unsigned.sh
       - name: Export test screenshots

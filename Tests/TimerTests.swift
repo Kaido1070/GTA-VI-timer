@@ -84,7 +84,7 @@ final class TimerTests: XCTestCase {
         XCTAssertEqual(CountdownSchedule.dates(now: target, target: target), [target])
     }
 
-    @MainActor func testRenderEvidence() throws {
+    @MainActor func testRenderEvidence() async throws {
         let settings = TimerSettings()
         let remaining = Remaining(target: settings.targetDate(), now: settings.targetDate().addingTimeInterval(-24 * 86400))
         let cases: [(String, AnyView, CGSize)] = [
@@ -94,9 +94,19 @@ final class TimerTests: XCTestCase {
             ("Lock-art-only-NOT-system-rendering", AnyView(DaysArtworkCard(settings: settings, remaining: remaining, compact: true)), CGSize(width: 64, height: 64))
         ]
         for (name, view, size) in cases {
-            let renderer = ImageRenderer(content: view.frame(width: size.width, height: size.height).preferredColorScheme(.dark))
-            renderer.scale = 2
-            let image = try XCTUnwrap(renderer.uiImage)
+            let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height).preferredColorScheme(.dark))
+            let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
+            let window = UIWindow(windowScene: scene)
+            window.frame = CGRect(origin: .zero, size: size)
+            window.rootViewController = controller
+            window.makeKeyAndVisible()
+            controller.view.setNeedsLayout()
+            controller.view.layoutIfNeeded()
+            try await Task.sleep(for: .milliseconds(300))
+            let image = UIGraphicsImageRenderer(size: size).image { _ in
+                controller.view.drawHierarchy(in: CGRect(origin: .zero, size: size), afterScreenUpdates: true)
+            }
+            window.isHidden = true
             let attachment = XCTAttachment(image: image); attachment.name = name; attachment.lifetime = .keepAlways
             add(attachment)
         }

@@ -15,8 +15,7 @@ targets:
   GTAVITimer:
     type: application
     platform: iOS
-    sources: [App, Shared]
-    resources: [Resources/Assets.xcassets]
+    sources: [App, Shared, Resources/Assets.xcassets]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kaido1070.gtavitimer
@@ -39,10 +38,7 @@ targets:
   TimerWidget:
     type: app-extension
     platform: iOS
-    sources: [Widget, Shared]
-    resources:
-      - path: Resources/Assets.xcassets
-        excludes: [AppIcon.appiconset]
+    sources: [Widget, Shared, Resources/Assets.xcassets]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.kaido1070.gtavitimer.widget
