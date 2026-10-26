@@ -13,10 +13,12 @@ struct SettingsView: View {
     @State private var loading = false
     @State private var saving = false
     @State private var error: String?
+    private let saved: TimerSettings
     let onSave: (TimerSettings) -> Void
 
     init(initial: TimerSettings, onSave: @escaping (TimerSettings) -> Void) {
         _draft = State(initialValue: initial)
+        saved = initial
         _date = State(initialValue: initial.targetDate())
         self.onSave = onSave
     }
@@ -27,8 +29,6 @@ struct SettingsView: View {
                 Section("الموعد") {
                     TextField("اسم اللعبة", text: $draft.name)
                     DatePicker("التاريخ", selection: $date, displayedComponents: .date)
-                    Text("الاستهداف: بداية اليوم المختار، الساعة 00:00 حسب المنطقة الزمنية المحلية للجهاز (\(TimeZone.current.identifier)). اليوم المتبقي = 24 ساعة كاملة من المدة الفعلية؛ قد تؤثر تغييرات التوقيت الصيفي.")
-                        .font(.footnote).foregroundStyle(.secondary)
                 }
                 Section("الخلفية") {
                     PhotosPicker(selection: $selection, matching: .images) {
@@ -49,13 +49,8 @@ struct SettingsView: View {
                     Picker("التذكير", selection: Binding(get: { draft.reminderMode }, set: { draft.reminders = $0 })) {
                         ForEach(ReminderMode.allCases) { mode in Text(mode.title).tag(mode) }
                     }
-                    Text("تنبيهات محلية فقط، متوقفة افتراضيًا. عند التفعيل والحفظ سيطلب النظام الإذن. قد تؤخرها إعدادات التركيز أو ملخص الإشعارات.")
-                        .font(.footnote).foregroundStyle(.secondary)
                 }
-                Section("التخزين والودجت") {
-                    Text("عند توفر App Group، تشترك الإعدادات والصورة مع الودجت. عند غيابها تُحفظ داخل التطبيق فقط، ويظل الودجت على GTA VI و19 نوفمبر 2026 والصورة المضمّنة. يقرر iOS وقت تحديث الودجت وقد يعرض صورة القفل بلون موحّد.")
-                        .font(.footnote)
-                }
+                SystemFeaturesSection(settings: saved)
                 if let error { Section { Text(error).foregroundStyle(.orange) } }
             }
             .navigationTitle("الإعدادات")

@@ -90,6 +90,7 @@ final class TimerTests: XCTestCase {
         let cases: [(String, AnyView, CGSize)] = [
             ("Home-390", AnyView(HomeView()), CGSize(width: 390, height: 844)),
             ("Home-320", AnyView(HomeView()), CGSize(width: 320, height: 740)),
+            ("Settings-390", AnyView(SettingsView(initial: settings) { _ in }), CGSize(width: 390, height: 1400)),
             ("Square-card", AnyView(DaysArtworkCard(settings: settings, remaining: remaining)), CGSize(width: 170, height: 170)),
             ("Lock-art-only-NOT-system-rendering", AnyView(DaysArtworkCard(settings: settings, remaining: remaining, compact: true)), CGSize(width: 64, height: 64)),
             // Layout check only; the system applies vibrant rendering on the lock screen.

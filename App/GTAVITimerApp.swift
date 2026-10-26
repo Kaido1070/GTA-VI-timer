@@ -15,7 +15,6 @@ struct HomeView: View {
     @State private var settings = TimerSettings()
     @State private var error: String?
     @State private var editing = false
-    @State private var localOnly = false
     private let turquoise = Color(red: 0.26, green: 0.76, blue: 0.80)
 
     var body: some View {
@@ -25,11 +24,6 @@ struct HomeView: View {
                     if let error {
                         Label(error, systemImage: "exclamationmark.triangle")
                             .font(.callout).foregroundStyle(.orange).padding()
-                    }
-                    if localOnly {
-                        Text("الحفظ داخل التطبيق فقط. الودجت يستخدم GTA VI و19 نوفمبر 2026 والصورة المضمّنة حتى تتوفر مشاركة App Group.")
-                            .font(.footnote).foregroundStyle(.secondary).padding(10)
-                            .background(Color(white: 0.08), in: RoundedRectangle(cornerRadius: 14))
                     }
                     ZStack(alignment: .bottomLeading) {
                         ArtworkView(settings: settings)
@@ -47,35 +41,22 @@ struct HomeView: View {
                     // Only the visible application refreshes each second.
                     TimelineView(.periodic(from: .now, by: 1)) { context in
                         let remaining = Remaining(target: settings.targetDate(), now: context.date)
-                        VStack(spacing: 16) {
-                            Group {
-                                if remaining.reached {
-                                    Text("وصل الموعد").font(.largeTitle.bold()).frame(maxWidth: .infinity)
-                                } else {
-                                    HStack(spacing: 4) {
-                                        unit(remaining.days, "يوم")
-                                        unit(remaining.hours, "ساعة")
-                                        unit(remaining.minutes, "دقيقة")
-                                        unit(remaining.seconds, "ثانية")
-                                    }
-                                    .environment(\.layoutDirection, .leftToRight)
+                        Group {
+                            if remaining.reached {
+                                Text("وصل الموعد").font(.largeTitle.bold()).frame(maxWidth: .infinity)
+                            } else {
+                                HStack(spacing: 4) {
+                                    unit(remaining.days, "يوم")
+                                    unit(remaining.hours, "ساعة")
+                                    unit(remaining.minutes, "دقيقة")
+                                    unit(remaining.seconds, "ثانية")
                                 }
-                            }
-                            .foregroundStyle(turquoise)
-                            .padding(.vertical, 24).padding(.horizontal, 12)
-                            .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 24))
-
-                            HStack {
-                                DaysArtworkCard(settings: settings, remaining: remaining)
-                                    .frame(width: 160, height: 160)
-                                Spacer()
-                                VStack(alignment: .leading, spacing: 8) {
-                                    Text("بطاقتك المصغّرة").font(.headline)
-                                    Text("أضف الودجت إلى الشاشة الرئيسية أو شاشة القفل.")
-                                        .font(.callout).foregroundStyle(.secondary)
-                                }
+                                .environment(\.layoutDirection, .leftToRight)
                             }
                         }
+                        .foregroundStyle(turquoise)
+                        .padding(.vertical, 24).padding(.horizontal, 12)
+                        .background(Color(white: 0.11), in: RoundedRectangle(cornerRadius: 24))
                     }
                 }
                 .padding(16)
@@ -84,8 +65,6 @@ struct HomeView: View {
             .navigationTitle("GTA VI Timer")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
-                NavigationLink { SystemFeaturesView(settings: settings) } label: { Image(systemName: "sparkles") }
-                    .accessibilityLabel("مزايا iOS")
                 Button { editing = true } label: { Image(systemName: "gearshape") }
                     .accessibilityLabel("الإعدادات")
             }
@@ -138,7 +117,7 @@ struct HomeView: View {
     private func reload() {
         do {
             let store = try SettingsStore.available()
-            settings = try store.load(); localOnly = store.scope == .applicationOnly; error = nil
+            settings = try store.load(); error = nil
         }
         catch { self.error = error.localizedDescription }
     }

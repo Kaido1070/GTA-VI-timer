@@ -9,8 +9,8 @@ settings:
     DEVELOPMENT_TEAM: ''
     APP_GROUP_IDENTIFIER: group.com.kaido1070.gtavitimer
     TARGETED_DEVICE_FAMILY: '1'
-    MARKETING_VERSION: '1.3'
-    CURRENT_PROJECT_VERSION: '4'
+    MARKETING_VERSION: '1.4'
+    CURRENT_PROJECT_VERSION: '5'
 targets:
   GTAVITimer:
     type: application
