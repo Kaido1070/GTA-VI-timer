@@ -34,7 +34,7 @@ struct TimerWidgetView: View {
     var body: some View {
         Group {
             if family == .accessoryInline {
-                Label(remaining.reached ? "وصل الموعد" : "\(entry.settings.name): \(remaining.days) يوم", systemImage: "hourglass")
+                Label(remaining.reached ? "\(entry.settings.name): Out now" : "\(entry.settings.name): \(remaining.days)d left", systemImage: "hourglass")
             } else if family == .accessoryCircular {
                 ZStack {
                     AccessoryWidgetBackground()
@@ -42,13 +42,13 @@ struct TimerWidgetView: View {
                         if remaining.reached { Image(systemName: "checkmark").font(.title2) }
                         else {
                             Text("\(remaining.days)").font(.system(size: 23, weight: .heavy, design: .rounded)).minimumScaleFactor(0.5).lineLimit(1)
-                            Text("يوم").font(.caption2)
+                            Text("DAYS").font(.system(size: 9, weight: .bold))
                         }
                     }.padding(5)
                 }
-                .accessibilityLabel(remaining.reached ? "وصل الموعد" : "\(remaining.days) يوم متبقٍ")
+                .accessibilityLabel(remaining.reached ? "Out now" : "\(remaining.days) days left")
             } else if family == .accessoryRectangular {
-                LockRectangularView(settings: entry.settings, remaining: remaining, storageError: entry.storageError)
+                LockRectangularView(settings: entry.settings, remaining: remaining, now: entry.date, storageError: entry.storageError)
             } else if family == .systemSmall {
                 DaysArtworkCard(settings: entry.settings, remaining: remaining)
                     .overlay(alignment: .topTrailing) { refreshButton.padding(6) }

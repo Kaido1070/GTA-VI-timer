@@ -83,13 +83,17 @@ struct DaysArtworkCard: View {
 }
 
 // Lock-screen accessoryRectangular content: the artwork as a full-height square
-// tile plus large text filling the rest of the rectangle. Fixed point sizes
+// tile plus English text (days and a live h:mm:ss) filling the rest. Fixed point sizes
 // keep the layout stable. The system renders the lock screen vibrantly, so the
 // artwork appears as a tinted, semi-transparent image there.
 struct LockRectangularView: View {
     let settings: TimerSettings
     let remaining: Remaining
+    var now = Date()
     var storageError = false
+    private var dayBoundary: Date {
+        max(now, settings.targetDate().addingTimeInterval(-Double(remaining.days) * 86_400))
+    }
     var body: some View {
         GeometryReader { geometry in
             HStack(spacing: 8) {
@@ -101,30 +105,34 @@ struct LockRectangularView: View {
                         .font(.system(size: 14, weight: .bold))
                         .lineLimit(1).minimumScaleFactor(0.6)
                     if remaining.reached {
-                        Text("وصل الموعد")
-                            .font(.system(size: 22, weight: .heavy, design: .rounded))
+                        Text("OUT NOW")
+                            .font(.system(size: 24, weight: .heavy, design: .rounded))
                             .lineLimit(1).minimumScaleFactor(0.5)
                     } else {
                         HStack(alignment: .firstTextBaseline, spacing: 3) {
                             Text("\(remaining.days)")
-                                .font(.system(size: 30, weight: .heavy, design: .rounded))
+                                .font(.system(size: 28, weight: .heavy, design: .rounded))
                                 .monospacedDigit()
                                 .widgetAccentable()
-                            Text("يوم").font(.system(size: 15, weight: .semibold))
+                            Text(remaining.days == 1 ? "DAY" : "DAYS").font(.system(size: 13, weight: .bold))
                         }
                         .lineLimit(1).minimumScaleFactor(0.5)
+                        // Hours:minutes:seconds left in the current day, ticking live.
+                        // The timeline reloads at each day boundary to roll the day count.
+                        Text(timerInterval: now...dayBoundary, countsDown: true)
+                            .font(.system(size: 15, weight: .semibold, design: .rounded))
+                            .monospacedDigit()
+                            .lineLimit(1).minimumScaleFactor(0.6)
                     }
-                    Group {
-                        if storageError { Text("تعذّرت قراءة الإعدادات") }
-                        else { Text(settings.targetDate(), format: .dateTime.day().month(.abbreviated).year()) }
+                    if storageError {
+                        Text("Settings unreadable").font(.system(size: 11, weight: .medium)).lineLimit(1).minimumScaleFactor(0.6)
                     }
-                    .font(.system(size: 12, weight: .medium))
-                    .lineLimit(1).minimumScaleFactor(0.6)
                 }
                 Spacer(minLength: 0)
             }
         }
+        .environment(\.layoutDirection, .leftToRight)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(remaining.reached ? "\(settings.name)، وصل الموعد" : "\(settings.name)، \(remaining.days) يوم متبقٍ")
+        .accessibilityLabel(remaining.reached ? "\(settings.name), out now" : "\(settings.name), \(remaining.days) days left")
     }
 }

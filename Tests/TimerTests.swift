@@ -93,8 +93,8 @@ final class TimerTests: XCTestCase {
             ("Square-card", AnyView(DaysArtworkCard(settings: settings, remaining: remaining)), CGSize(width: 170, height: 170)),
             ("Lock-art-only-NOT-system-rendering", AnyView(DaysArtworkCard(settings: settings, remaining: remaining, compact: true)), CGSize(width: 64, height: 64)),
             // Layout check only; the system applies vibrant rendering on the lock screen.
-            ("Lock-rect-170-RTL", AnyView(LockRectangularView(settings: settings, remaining: remaining).background(Color.indigo).environment(\.layoutDirection, .rightToLeft).environment(\.locale, Locale(identifier: "ar"))), CGSize(width: 170, height: 76)),
-            ("Lock-rect-158-RTL", AnyView(LockRectangularView(settings: settings, remaining: Remaining(target: settings.targetDate(), now: settings.targetDate().addingTimeInterval(-999 * 86400))).background(Color.indigo).environment(\.layoutDirection, .rightToLeft).environment(\.locale, Locale(identifier: "ar"))), CGSize(width: 158, height: 72))
+            ("Lock-rect-170-RTL", AnyView(LockRectangularView(settings: settings, remaining: remaining, now: settings.targetDate().addingTimeInterval(-24 * 86400 + 3725)).background(Color.indigo).environment(\.layoutDirection, .rightToLeft)), CGSize(width: 170, height: 76)),
+            ("Lock-rect-158-RTL", AnyView(LockRectangularView(settings: settings, remaining: Remaining(target: settings.targetDate(), now: settings.targetDate().addingTimeInterval(-999 * 86400 - 3600)), now: settings.targetDate().addingTimeInterval(-999 * 86400 - 3600)).background(Color.indigo).environment(\.layoutDirection, .rightToLeft)), CGSize(width: 158, height: 72))
         ]
         for (name, view, size) in cases {
             let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height).preferredColorScheme(.dark))
