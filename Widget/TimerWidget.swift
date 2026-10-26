@@ -8,6 +8,43 @@ struct TimerEntry: TimelineEntry {
     var storageError = false
 }
 
+/// Reads the app's countdowns from the shared container.
+enum WidgetData {
+    struct Result { var list: [Countdown] = []; var shared = false; var storageError = false }
+    static func read() -> Result {
+        do { return Result(list: try SettingsStore.shared().load(), shared: true) }
+        catch SettingsStore.Failure.groupUnavailable { return Result() }
+        catch { return Result(shared: true, storageError: true) }
+    }
+    static func timeline(_ entry: TimerEntry) -> Timeline<TimerEntry> {
+        guard let countdown = entry.countdown else {
+            return Timeline(entries: [entry], policy: .after(entry.date.addingTimeInterval(3600)))
+        }
+        let entries = CountdownSchedule.dates(now: entry.date, target: countdown.targetDate()).map {
+            TimerEntry(date: $0, countdown: countdown, storageError: entry.storageError)
+        }
+        return Timeline(entries: entries, policy: .after(entry.date.addingTimeInterval(6 * 3600)))
+    }
+}
+
+/// The original widget kind (static, as in 1.x), so widgets already on the
+/// screen keep working: it shows the soonest countdown.
+struct StaticProvider: TimelineProvider {
+    func placeholder(in context: Context) -> TimerEntry { TimerEntry(date: .now, countdown: .gtaVI) }
+    func getSnapshot(in context: Context, completion: @escaping (TimerEntry) -> Void) { completion(read()) }
+    func getTimeline(in context: Context, completion: @escaping (Timeline<TimerEntry>) -> Void) {
+        completion(WidgetData.timeline(read()))
+    }
+    private func read() -> TimerEntry {
+        let data = WidgetData.read()
+        // Without an App Group (personal signing) the app's countdowns are out
+        // of reach; keep showing the original countdown as 1.x did.
+        let countdown = data.shared ? CountdownLookup.next(in: data.list) : .gtaVI
+        return TimerEntry(date: .now, countdown: countdown, storageError: data.storageError)
+    }
+}
+
+/// The configurable kind: pick an app countdown or type one in Edit Widget.
 struct Provider: AppIntentTimelineProvider {
     func placeholder(in context: Context) -> TimerEntry { TimerEntry(date: .now, countdown: .gtaVI) }
     func snapshot(for configuration: SelectCountdownIntent, in context: Context) async -> TimerEntry {
@@ -16,30 +53,17 @@ struct Provider: AppIntentTimelineProvider {
         return entry.countdown == nil && context.isPreview ? TimerEntry(date: .now, countdown: .gtaVI) : entry
     }
     func timeline(for configuration: SelectCountdownIntent, in context: Context) async -> Timeline<TimerEntry> {
-        let initial = read(configuration)
-        guard let countdown = initial.countdown else {
-            return Timeline(entries: [initial], policy: .after(initial.date.addingTimeInterval(3600)))
-        }
-        let entries = CountdownSchedule.dates(now: initial.date, target: countdown.targetDate()).map {
-            TimerEntry(date: $0, countdown: countdown, storageError: initial.storageError)
-        }
-        return Timeline(entries: entries, policy: .after(initial.date.addingTimeInterval(6 * 3600)))
+        WidgetData.timeline(read(configuration))
     }
     private func read(_ configuration: SelectCountdownIntent) -> TimerEntry {
-        var list: [Countdown] = []
-        var storageError = false
-        do { list = try SettingsStore.shared().load() }
-        // Personal signing without an App Group: the widget can't see the app's
-        // countdowns, but can still show one set in Edit Widget.
-        catch SettingsStore.Failure.groupUnavailable {}
-        catch { storageError = true }
+        let data = WidgetData.read()
         // An explicitly chosen app countdown wins, then this widget's own fields,
         // then the soonest app countdown.
-        if let entity = configuration.countdown, let match = list.first(where: { $0.id.uuidString == entity.id }) {
-            return TimerEntry(date: .now, countdown: match, storageError: storageError)
+        if let entity = configuration.countdown, let match = data.list.first(where: { $0.id.uuidString == entity.id }) {
+            return TimerEntry(date: .now, countdown: match, storageError: data.storageError)
         }
         if let manual = configuration.manualCountdown { return TimerEntry(date: .now, countdown: manual) }
-        return TimerEntry(date: .now, countdown: CountdownLookup.next(in: list), storageError: storageError)
+        return TimerEntry(date: .now, countdown: CountdownLookup.next(in: data.list), storageError: data.storageError)
     }
 }
 
@@ -87,13 +111,27 @@ struct TimerWidgetView: View {
     }
 }
 
+private let families: [WidgetFamily] = [.systemSmall, .systemMedium, .systemLarge,
+                                        .accessoryRectangular, .accessoryCircular, .accessoryInline]
+
 struct TimerWidget: Widget {
     let kind = "GTAVITimerWidget"
     var body: some WidgetConfiguration {
-        AppIntentConfiguration(kind: kind, intent: SelectCountdownIntent.self, provider: Provider()) { TimerWidgetView(entry: $0) }
+        StaticConfiguration(kind: kind, provider: StaticProvider()) { TimerWidgetView(entry: $0) }
             .configurationDisplayName("AnyTimer")
-            .description("اختر أي عدّاد لعرضه. اضغط مطولًا على الودجت > تحرير لتغيير العدّاد.")
-            .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryCircular, .accessoryInline])
+            .description("أقرب عدّاد قادم.")
+            .supportedFamilies(families)
+            .contentMarginsDisabled()
+    }
+}
+
+struct CustomTimerWidget: Widget {
+    let kind = "AnyTimerCustomWidget"
+    var body: some WidgetConfiguration {
+        AppIntentConfiguration(kind: kind, intent: SelectCountdownIntent.self, provider: Provider()) { TimerWidgetView(entry: $0) }
+            .configurationDisplayName("AnyTimer Custom")
+            .description("اضغط مطولًا > تحرير الأداة لاختيار العدّاد أو كتابة الاسم والتاريخ والألوان.")
+            .supportedFamilies(families)
             .contentMarginsDisabled()
     }
 }
@@ -103,6 +141,7 @@ struct TimerWidget: Widget {
 struct CountdownWidgetBundle: WidgetBundle {
     var body: some Widget {
         TimerWidget()
+        CustomTimerWidget()
         LiveCountdownWidget()
         if #available(iOS 18.0, *) { TimerControl() }
     }
