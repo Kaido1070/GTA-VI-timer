@@ -27,8 +27,8 @@ enum WidgetData {
     }
 }
 
-/// The original widget kind (static, as in 1.x), so widgets already on the
-/// screen keep working: it shows the soonest countdown.
+/// The original widget kind (static, as in 1.x): always GTA VI, so widgets
+/// already on the screen keep working unchanged.
 struct StaticProvider: TimelineProvider {
     func placeholder(in context: Context) -> TimerEntry { TimerEntry(date: .now, countdown: .gtaVI) }
     func getSnapshot(in context: Context, completion: @escaping (TimerEntry) -> Void) { completion(read()) }
@@ -36,11 +36,7 @@ struct StaticProvider: TimelineProvider {
         completion(WidgetData.timeline(read()))
     }
     private func read() -> TimerEntry {
-        let data = WidgetData.read()
-        // Without an App Group (personal signing) the app's countdowns are out
-        // of reach; keep showing the original countdown as 1.x did.
-        let countdown = data.shared ? CountdownLookup.next(in: data.list) : .gtaVI
-        return TimerEntry(date: .now, countdown: countdown, storageError: data.storageError)
+        TimerEntry(date: .now, countdown: .gtaVI)
     }
 }
 
@@ -57,10 +53,11 @@ struct Provider: AppIntentTimelineProvider {
     }
     private func read(_ configuration: SelectCountdownIntent) -> TimerEntry {
         let data = WidgetData.read()
-        // An explicitly chosen app countdown wins, then this widget's own fields,
-        // then the soonest app countdown.
-        if let entity = configuration.countdown, let match = data.list.first(where: { $0.id.uuidString == entity.id }) {
-            return TimerEntry(date: .now, countdown: match, storageError: data.storageError)
+        // A chosen countdown wins (live copy if reachable, else the one stored
+        // in the widget), then this widget's own fields, then the soonest one.
+        if configuration.countdown != nil {
+            return TimerEntry(date: .now, countdown: CountdownLookup.find(configuration.countdown, in: data.list),
+                              storageError: data.storageError)
         }
         if let manual = configuration.manualCountdown { return TimerEntry(date: .now, countdown: manual) }
         return TimerEntry(date: .now, countdown: CountdownLookup.next(in: data.list), storageError: data.storageError)
@@ -118,8 +115,8 @@ struct TimerWidget: Widget {
     let kind = "GTAVITimerWidget"
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: StaticProvider()) { TimerWidgetView(entry: $0) }
-            .configurationDisplayName("AnyTimer")
-            .description("أقرب عدّاد قادم.")
+            .configurationDisplayName("GTA VI")
+            .description("عدّاد GTA VI.")
             .supportedFamilies(families)
             .contentMarginsDisabled()
     }
@@ -129,8 +126,8 @@ struct CustomTimerWidget: Widget {
     let kind = "AnyTimerCustomWidget"
     var body: some WidgetConfiguration {
         AppIntentConfiguration(kind: kind, intent: SelectCountdownIntent.self, provider: Provider()) { TimerWidgetView(entry: $0) }
-            .configurationDisplayName("AnyTimer Custom")
-            .description("اضغط مطولًا > تحرير الأداة لاختيار العدّاد أو كتابة الاسم والتاريخ والألوان.")
+            .configurationDisplayName("AnyTimer")
+            .description("اضغط مطولًا > تحرير الأداة لاختيار أي عدّاد من التطبيق.")
             .supportedFamilies(families)
             .contentMarginsDisabled()
     }

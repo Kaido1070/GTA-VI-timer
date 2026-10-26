@@ -94,6 +94,7 @@ struct CountdownNumbers: View {
                         .fixedSize()
                 }
                 .lineLimit(1)
+                .environment(\.layoutDirection, .leftToRight)
                 if showClock ?? style.showClock {
                     // The system ticks this text; the timeline reloads at each
                     // day boundary to roll the day count.
@@ -238,10 +239,11 @@ struct EmptyCountdownView: View {
 
 // MARK: - Lock screen
 
-// accessoryRectangular: the image as a full-height square tile (unless hidden)
-// plus text filling the rest. The system renders the lock screen vibrantly,
+// accessoryRectangular: the image as a full-height square tile (if any) plus
+// text filling the rest, aligned like the system's own lock-screen widgets. The system renders the lock screen vibrantly,
 // so colours become a single tint there.
 struct LockRectangularView: View {
+    @Environment(\.layoutDirection) private var direction
     let countdown: Countdown
     var now = Date()
     var storageError = false
@@ -267,7 +269,10 @@ struct LockRectangularView: View {
                 Spacer(minLength: 0)
             }
         }
-        .environment(\.layoutDirection, .leftToRight)
+        // Text only follows the system's direction like the built-in lock-screen
+        // widgets (right-aligned on an Arabic iPhone); with an image it keeps
+        // the original image-then-text order.
+        .environment(\.layoutDirection, image == nil ? direction : .leftToRight)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(spokenSummary(countdown, now: now))
     }

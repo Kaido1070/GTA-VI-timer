@@ -76,4 +76,20 @@ final class SystemIntegrationTests: XCTestCase {
         XCTAssertEqual(manual?.style.showClock, false)
         XCTAssertTrue(manual?.isValid ?? false)
     }
+    func testWidgetKeepsTheChosenCountdownWithoutTheAppData() async throws {
+        var countdown = Countdown(name: "COd M4", target: Date(timeIntervalSince1970: 2_000_000_000))
+        countdown.imageFilename = "photo-x.jpg"
+        countdown.style = CountdownStyle(background: "#0B1E3F", text: "#E8F1FF", accent: "#5AC8FA", font: .futura)
+        let entity = CountdownEntity(countdown)
+        let restored = try XCTUnwrap(CountdownEntity(id: entity.id))
+        var expected = countdown; expected.imageFilename = nil
+        XCTAssertEqual(restored.countdown, expected)
+        // Resolves from the identifier alone, as the widget does without an App Group.
+        let resolved = try await CountdownQuery().entities(for: [entity.id])
+        XCTAssertEqual(resolved.first?.countdown, expected)
+        XCTAssertEqual(CountdownLookup.find(entity, in: []), expected)
+        var live = countdown; live.name = "Renamed"
+        XCTAssertEqual(CountdownLookup.find(entity, in: [live])?.name, "Renamed")
+        XCTAssertNil(CountdownEntity(id: "garbage"))
+    }
 }

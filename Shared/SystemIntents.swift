@@ -1,23 +1,41 @@
 import AppIntents
 import WidgetKit
 
+/// A countdown as the widget stores it. The identifier carries the whole
+/// countdown (minus any photo), so the widget can draw it without reading the
+/// app's data — essential when signing has no App Group to share it.
 struct CountdownEntity: AppEntity, Identifiable {
     static var typeDisplayRepresentation = TypeDisplayRepresentation(name: "عدّاد")
     static var defaultQuery = CountdownQuery()
     let id: String
-    let name: String
-    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
+    let countdown: Countdown
+    var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(countdown.name)") }
 
-    init(_ countdown: Countdown) { id = countdown.id.uuidString; name = countdown.name }
+    init(_ countdown: Countdown) {
+        var portable = countdown
+        portable.imageFilename = nil
+        self.countdown = portable
+        id = Self.prefix + ((try? JSONEncoder().encode(portable).base64EncodedString()) ?? countdown.id.uuidString)
+    }
+
+    init?(id: String) {
+        guard id.hasPrefix(Self.prefix), let data = Data(base64Encoded: String(id.dropFirst(Self.prefix.count))),
+              let countdown = try? JSONDecoder().decode(Countdown.self, from: data), countdown.isValid else { return nil }
+        self.id = id
+        self.countdown = countdown
+    }
+    private static let prefix = "c1:"
 }
 
 struct CountdownQuery: EntityQuery {
     private func all() -> [Countdown] { (try? SettingsStore.available().load()) ?? [] }
     func entities(for identifiers: [String]) async throws -> [CountdownEntity] {
-        all().filter { identifiers.contains($0.id.uuidString) }.map(CountdownEntity.init)
+        let list = all()
+        return identifiers.compactMap { id in
+            CountdownEntity(id: id) ?? list.first { $0.id.uuidString == id }.map(CountdownEntity.init)
+        }
     }
     func suggestedEntities() async throws -> [CountdownEntity] { all().map(CountdownEntity.init) }
-    func defaultResult() async -> CountdownEntity? { CountdownLookup.next(in: all()).map(CountdownEntity.init) }
 }
 
 enum CountdownLookup {
@@ -25,9 +43,10 @@ enum CountdownLookup {
     static func next(in list: [Countdown], now: Date = .now) -> Countdown? {
         list.filter { $0.targetDate() > now }.min { $0.targetDate() < $1.targetDate() } ?? list.first
     }
+    /// The live copy when the app's data is reachable, else the stored one.
     static func find(_ entity: CountdownEntity?, in list: [Countdown]) -> Countdown? {
-        if let entity, let match = list.first(where: { $0.id.uuidString == entity.id }) { return match }
-        return next(in: list)
+        guard let entity else { return next(in: list) }
+        return list.first { $0.id == entity.countdown.id } ?? entity.countdown
     }
 }
 

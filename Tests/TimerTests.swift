@@ -138,6 +138,8 @@ final class TimerTests: XCTestCase {
             // Layout check only; the system applies vibrant rendering on the lock screen.
             ("Lock-rect-170", AnyView(LockRectangularView(countdown: gta).background(Color.indigo)), CGSize(width: 170, height: 76)),
             ("Lock-rect-158", AnyView(LockRectangularView(countdown: centered).background(Color.indigo)), CGSize(width: 158, height: 72)),
+            ("Lock-rect-RTL", AnyView(LockRectangularView(countdown: plain).background(Color.indigo)
+                .environment(\.layoutDirection, .rightToLeft)), CGSize(width: 170, height: 76)),
         ]
         for (name, view, size) in cases {
             let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height).preferredColorScheme(.dark))
