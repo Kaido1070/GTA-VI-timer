@@ -263,6 +263,7 @@ struct LockRectangularView: View {
                         Text("Settings unreadable").font(.system(size: 11, weight: .medium)).lineLimit(1).minimumScaleFactor(0.6)
                     }
                 }
+                .padding(.leading, image == nil ? 8 : 0)
                 Spacer(minLength: 0)
             }
         }

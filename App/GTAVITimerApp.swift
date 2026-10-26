@@ -84,7 +84,8 @@ struct HomeView: View {
                         .listRowBackground(Color.clear)
                 }
                 ForEach(countdowns) { countdown in
-                    NavigationLink(value: countdown.id) {
+                    // A plain button keeps the card full width (no list chevron).
+                    Button { path.append(countdown.id) } label: {
                         CountdownCard(countdown: countdown, now: context.date, height: appearance.cardSize.height)
                     }
                     .buttonStyle(.plain)
