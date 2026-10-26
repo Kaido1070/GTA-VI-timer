@@ -26,14 +26,20 @@ struct Provider: AppIntentTimelineProvider {
         return Timeline(entries: entries, policy: .after(initial.date.addingTimeInterval(6 * 3600)))
     }
     private func read(_ configuration: SelectCountdownIntent) -> TimerEntry {
-        do {
-            let list = try SettingsStore.shared().load()
-            return TimerEntry(date: .now, countdown: CountdownLookup.find(configuration.countdown, in: list))
-        }
+        var list: [Countdown] = []
+        var storageError = false
+        do { list = try SettingsStore.shared().load() }
         // Personal signing without an App Group: the widget can't see the app's
-        // countdowns. Say so plainly rather than inventing one.
-        catch SettingsStore.Failure.groupUnavailable { return TimerEntry(date: .now, countdown: nil) }
-        catch { return TimerEntry(date: .now, countdown: nil, storageError: true) }
+        // countdowns, but can still show one set in Edit Widget.
+        catch SettingsStore.Failure.groupUnavailable {}
+        catch { storageError = true }
+        // An explicitly chosen app countdown wins, then this widget's own fields,
+        // then the soonest app countdown.
+        if let entity = configuration.countdown, let match = list.first(where: { $0.id.uuidString == entity.id }) {
+            return TimerEntry(date: .now, countdown: match, storageError: storageError)
+        }
+        if let manual = configuration.manualCountdown { return TimerEntry(date: .now, countdown: manual) }
+        return TimerEntry(date: .now, countdown: CountdownLookup.next(in: list), storageError: storageError)
     }
 }
 

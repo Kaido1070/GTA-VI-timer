@@ -226,7 +226,7 @@ struct EmptyCountdownView: View {
                 .foregroundStyle(Color(hex: "#D6A84E"))
             if !compact {
                 Text("AnyTimer").font(.system(size: 15, weight: .bold))
-                Text("Open the app to add a countdown").font(.system(size: 11)).opacity(0.7)
+                Text("Long-press › Edit Widget to set a countdown").font(.system(size: 11)).opacity(0.7)
                     .multilineTextAlignment(.center)
             }
         }

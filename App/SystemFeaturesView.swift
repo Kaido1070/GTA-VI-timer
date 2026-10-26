@@ -26,7 +26,7 @@ struct AppSettingsView: View {
                 }
                 Section("مزايا iOS") {
                     LabeledContent("العدّادات", value: "\(countdowns.count)")
-                    LabeledContent("الودجت", value: sharing ? "متصل" : "يحتاج App Group")
+                    LabeledContent("الودجت", value: sharing ? "متصل بالتطبيق" : "يُضبط من «تحرير الأداة»")
                     LabeledContent("Siri", value: "«الوقت المتبقي للموعد»")
                     LabeledContent("إذن التنبيهات", value: permission)
                     if running {

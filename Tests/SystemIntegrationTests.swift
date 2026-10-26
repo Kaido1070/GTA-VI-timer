@@ -63,4 +63,17 @@ final class SystemIntegrationTests: XCTestCase {
         XCTAssertEqual(CountdownLookup.next(in: [past], now: now)?.name, "Past")
         XCTAssertNil(CountdownLookup.next(in: [], now: now))
     }
+    func testWidgetCanBeConfiguredWithoutTheApp() {
+        var intent = SelectCountdownIntent()
+        XCTAssertNil(intent.manualCountdown)
+        let date = Date(timeIntervalSince1970: 2_000_000_000)
+        intent.date = date; intent.name = "  Eid  "; intent.theme = .ocean; intent.font = .didot; intent.showClock = false
+        let manual = intent.manualCountdown
+        XCTAssertEqual(manual?.name, "Eid")
+        XCTAssertEqual(manual?.targetDate().timeIntervalSince1970 ?? 0, 2_000_000_000 - 2_000_000_000.truncatingRemainder(dividingBy: 60), accuracy: 0.5)
+        XCTAssertEqual(manual?.style.accent, "#5AC8FA")
+        XCTAssertEqual(manual?.style.font, .didot)
+        XCTAssertEqual(manual?.style.showClock, false)
+        XCTAssertTrue(manual?.isValid ?? false)
+    }
 }
