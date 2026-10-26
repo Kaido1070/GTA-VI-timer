@@ -93,6 +93,8 @@ final class TimerTests: XCTestCase {
             ("Settings-390", AnyView(SettingsView(initial: settings) { _ in }), CGSize(width: 390, height: 1400)),
             ("Square-card", AnyView(DaysArtworkCard(settings: settings, remaining: remaining)), CGSize(width: 170, height: 170)),
             ("Lock-art-only-NOT-system-rendering", AnyView(DaysArtworkCard(settings: settings, remaining: remaining, compact: true)), CGSize(width: 64, height: 64)),
+            ("Widget-medium", AnyView(HomeCountdownView(settings: settings, remaining: Remaining(target: settings.targetDate(), now: .now))), CGSize(width: 338, height: 158)),
+            ("Widget-large", AnyView(HomeCountdownView(settings: settings, remaining: Remaining(target: settings.targetDate(), now: .now), large: true)), CGSize(width: 338, height: 354)),
             // Layout check only; the system applies vibrant rendering on the lock screen.
             // Uses the real clock: the live h:mm:ss text always counts against it.
             ("Lock-rect-170-RTL", AnyView(LockRectangularView(settings: settings, remaining: Remaining(target: settings.targetDate(), now: .now)).background(Color.indigo).environment(\.layoutDirection, .rightToLeft)), CGSize(width: 170, height: 76)),
@@ -100,7 +102,7 @@ final class TimerTests: XCTestCase {
         ]
         for (name, view, size) in cases {
             let controller = UIHostingController(rootView: view.frame(width: size.width, height: size.height).preferredColorScheme(.dark))
-            if name.contains("card") || name.hasPrefix("Lock-") { controller.safeAreaRegions = [] }
+            if name.contains("card") || name.hasPrefix("Lock-") || name.hasPrefix("Widget-") { controller.safeAreaRegions = [] }
             let scene = try XCTUnwrap(UIApplication.shared.connectedScenes.first as? UIWindowScene)
             let window = UIWindow(windowScene: scene)
             window.frame = CGRect(origin: .zero, size: size)

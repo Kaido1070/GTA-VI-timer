@@ -56,32 +56,8 @@ struct TimerWidgetView: View {
                         if entry.storageError { Image(systemName: "exclamationmark.triangle.fill").padding(8).foregroundStyle(.orange) }
                     }
             } else {
-                GeometryReader { geometry in
-                    ZStack(alignment: .topLeading) {
-                        ArtworkView(settings: entry.settings, maximumPixelSize: 800, blurredFill: false)
-                        LinearGradient(colors: [.black.opacity(0.65), .clear], startPoint: .top, endPoint: .center)
-                        VStack(alignment: .leading, spacing: 4) {
-                            Text(entry.settings.name).font(.title2.bold())
-                            Text(entry.settings.targetDate(), format: .dateTime.day().month().year()).font(.caption)
-                            Spacer()
-                            Text(remaining.reached ? "وصل الموعد" : "\(remaining.days) يوم")
-                                .font(.system(size: family == .systemLarge ? 52 : 36, weight: .heavy, design: .rounded))
-                                .monospacedDigit().padding(8)
-                                .background(.black.opacity(0.5), in: RoundedRectangle(cornerRadius: 12))
-                            if entry.storageError { Text("تعذّرت قراءة الإعدادات — افتراضية").font(.caption) }
-                        }
-                        .foregroundStyle(.white).shadow(color: .black, radius: 2).padding(16)
-                    }
-                    .overlay(alignment: .topTrailing) {
-                        HStack(spacing: 10) {
-                            refreshButton
-                            Link(destination: URL(string: "gtavitimer://settings")!) {
-                                Image(systemName: "gearshape.fill").padding(5).background(.black.opacity(0.5), in: Circle())
-                            }.accessibilityLabel("إعدادات العدّاد")
-                        }.foregroundStyle(.white).padding(8)
-                    }
-                    .frame(width: geometry.size.width, height: geometry.size.height).clipped()
-                }
+                HomeCountdownView(settings: entry.settings, remaining: remaining, now: entry.date,
+                                  large: family == .systemLarge, storageError: entry.storageError)
             }
         }
         .containerBackground(for: .widget) { Color.black }

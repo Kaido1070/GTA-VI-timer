@@ -138,3 +138,88 @@ struct LockRectangularView: View {
         .accessibilityLabel(remaining.reached ? "\(settings.name), out now" : "\(settings.name), \(remaining.days) days left")
     }
 }
+
+// Medium / large home-screen widget: sunset backdrop, the artwork as a sharp
+// tile, and the countdown as days plus a live h:mm:ss. English to match the
+// lock-screen widget.
+struct HomeCountdownView: View {
+    let settings: TimerSettings
+    let remaining: Remaining
+    var now = Date()
+    var large = false
+    var storageError = false
+    private let accent = Color(red: 1.0, green: 0.62, blue: 0.78)
+    private var dayBoundary: Date {
+        max(now, settings.targetDate().addingTimeInterval(-Double(remaining.days) * 86_400))
+    }
+
+    var body: some View {
+        ZStack {
+            LinearGradient(colors: [Color(red: 0.16, green: 0.09, blue: 0.30), Color(red: 0.05, green: 0.03, blue: 0.10)],
+                           startPoint: .topLeading, endPoint: .bottomTrailing)
+            if large {
+                VStack(spacing: 12) {
+                    artwork
+                    countdown(daySize: 46, timerSize: 26)
+                }
+                .padding(14)
+            } else {
+                HStack(spacing: 14) {
+                    countdown(daySize: 40, timerSize: 22)
+                    artwork
+                }
+                .padding(12)
+            }
+        }
+        .foregroundStyle(.white)
+        .environment(\.layoutDirection, .leftToRight)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(remaining.reached ? "\(settings.name), out now" : "\(settings.name), \(remaining.days) days left")
+    }
+
+    private var artwork: some View {
+        ArtworkView(settings: settings, maximumPixelSize: large ? 700 : 400, blurredFill: false)
+            .aspectRatio(1, contentMode: .fit)
+            .clipShape(RoundedRectangle(cornerRadius: 16))
+            .shadow(color: .black.opacity(0.5), radius: 6, y: 3)
+    }
+
+    private func countdown(daySize: CGFloat, timerSize: CGFloat) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text(settings.name)
+                .font(.system(size: 17, weight: .heavy))
+                .lineLimit(1).minimumScaleFactor(0.6)
+            Text(settings.targetDate(), format: .dateTime.day().month(.abbreviated).year())
+                .font(.system(size: 12, weight: .medium))
+                .foregroundStyle(.white.opacity(0.7))
+                .environment(\.locale, Locale(identifier: "en_US"))
+            Spacer(minLength: 4)
+            if remaining.reached {
+                Text("OUT NOW")
+                    .font(.system(size: daySize * 0.75, weight: .heavy, design: .rounded))
+                    .foregroundStyle(accent)
+                    .lineLimit(1).minimumScaleFactor(0.5)
+            } else {
+                HStack(alignment: .firstTextBaseline, spacing: 5) {
+                    Text(verbatim: String(remaining.days))
+                        .font(.system(size: remaining.days >= 1000 ? daySize * 0.7 : daySize, weight: .heavy, design: .rounded))
+                        .foregroundStyle(accent)
+                    Text(remaining.days == 1 ? "DAY" : "DAYS")
+                        .font(.system(size: 14, weight: .bold))
+                        .fixedSize()
+                }
+                .lineLimit(1)
+                // Live hours:minutes:seconds within the current day; the timeline
+                // reloads at each day boundary to roll the day count.
+                Text(timerInterval: now...dayBoundary, countsDown: true)
+                    .font(.system(size: timerSize, weight: .semibold, design: .rounded))
+                    .monospacedDigit()
+                    .lineLimit(1).minimumScaleFactor(0.6)
+            }
+            if storageError {
+                Text("Settings unreadable").font(.system(size: 11)).foregroundStyle(.orange)
+            }
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+}
