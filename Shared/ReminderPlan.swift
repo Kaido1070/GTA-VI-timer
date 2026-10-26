@@ -20,19 +20,30 @@ struct PlannedReminder: Equatable {
 }
 
 enum ReminderPlan {
-    static let identifiers = ["gtavi.week", "gtavi.day", "gtavi.arrival"]
-    static func events(settings: TimerSettings, now: Date, timeZone: TimeZone = .current) -> [PlannedReminder] {
-        guard settings.reminderMode != .off else { return [] }
+    /// Every pending request this app owns starts with this prefix.
+    static let prefix = "anytimer."
+    /// Identifiers used by GTA VI Timer 1.x, cleared on upgrade.
+    static let legacyIdentifiers = ["gtavi.week", "gtavi.day", "gtavi.arrival"]
+
+    static func events(countdown: Countdown, now: Date, timeZone: TimeZone = .current) -> [PlannedReminder] {
+        guard countdown.reminderMode != .off else { return [] }
         var calendar = Calendar(identifier: .gregorian)
         calendar.timeZone = timeZone
-        let target = settings.targetDate(timeZone: timeZone)
+        let target = countdown.targetDate(timeZone: timeZone)
         var offsets = [0]
-        if settings.reminderMode == .milestones { offsets = [-7, -1, 0] }
+        if countdown.reminderMode == .milestones { offsets = [-7, -1, 0] }
         return offsets.compactMap { offset in
             guard let date = calendar.date(byAdding: .day, value: offset, to: target), date > now else { return nil }
             let suffix = offset == -7 ? "week" : offset == -1 ? "day" : "arrival"
-            let body = offset == 0 ? "وصل الموعد" : offset == -1 ? "باقي يوم على الموعد المحلي" : "باقي أسبوع على الموعد المحلي"
-            return PlannedReminder(identifier: "gtavi.\(suffix)", date: date, title: settings.name, body: body)
+            let body = offset == 0 ? "وصل الموعد" : offset == -1 ? "باقي يوم على الموعد" : "باقي أسبوع على الموعد"
+            return PlannedReminder(identifier: "\(prefix)\(countdown.id.uuidString).\(suffix)", date: date,
+                                   title: countdown.name, body: body)
         }
+    }
+
+    static func events(countdowns: [Countdown], now: Date, timeZone: TimeZone = .current) -> [PlannedReminder] {
+        // iOS keeps at most 64 pending local notifications per app; soonest first.
+        Array(countdowns.flatMap { events(countdown: $0, now: now, timeZone: timeZone) }
+            .sorted { $0.date < $1.date }.prefix(60))
     }
 }

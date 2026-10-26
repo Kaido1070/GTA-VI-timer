@@ -48,7 +48,7 @@ jobs:
         with:
           name: ios-build-evidence
           path: |
-            build/GTA-VI-Timer-unsigned.ipa
+            build/AnyTimer-unsigned.ipa
             build/Tests.xcresult
             build/screenshots
             GTAVITimer.xcodeproj

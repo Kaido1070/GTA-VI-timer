@@ -20,12 +20,15 @@ enum NotificationManager {
         var errorDescription: String? { "التنبيهات غير مسموحة. فعّلها من إعدادات iOS إذا رغبت بالتذكير." }
     }
 
-    static func apply(settings: TimerSettings, requestPermission: Bool) async throws {
+    /// Re-plans reminders for every countdown. Removes stale requests first,
+    /// even if permission was subsequently revoked.
+    static func apply(countdowns: [Countdown], requestPermission: Bool) async throws {
         let center = UNUserNotificationCenter.current()
-        let events = ReminderPlan.events(settings: settings, now: .now)
-        // Remove obsolete reminders even if permission was subsequently revoked.
-        center.removePendingNotificationRequests(withIdentifiers: ReminderPlan.identifiers)
-        center.removeDeliveredNotifications(withIdentifiers: ReminderPlan.identifiers)
+        let events = ReminderPlan.events(countdowns: countdowns, now: .now)
+        let pending = await center.pendingNotificationRequests().map(\.identifier)
+            .filter { $0.hasPrefix(ReminderPlan.prefix) }
+        center.removePendingNotificationRequests(withIdentifiers: pending + ReminderPlan.legacyIdentifiers)
+        center.removeDeliveredNotifications(withIdentifiers: ReminderPlan.legacyIdentifiers)
         guard !events.isEmpty else { return }
         let authorization = await center.notificationSettings().authorizationStatus
         if authorization == .notDetermined, requestPermission {
@@ -57,13 +60,16 @@ enum NotificationManager {
         }
     }
     static var isRunning: Bool { !Activity<LiveCountdownAttributes>.activities.isEmpty }
-    static func start(settings: TimerSettings) async throws {
+    static func start(countdown: Countdown) async throws {
         let now = Date()
+        let target = countdown.targetDate()
         guard ActivityAuthorizationInfo().areActivitiesEnabled else { throw Failure.disabled }
-        guard LiveCountdownEligibility.allows(target: settings.targetDate(), now: now) else { throw Failure.outsideFinalHours }
+        guard LiveCountdownEligibility.allows(target: target, now: now) else { throw Failure.outsideFinalHours }
         await stop()
-        let state = LiveCountdownAttributes.ContentState(target: settings.targetDate(), startedAt: now)
-        _ = try Activity.request(attributes: LiveCountdownAttributes(name: settings.name),
+        let state = LiveCountdownAttributes.ContentState(target: target, startedAt: now)
+        let attributes = LiveCountdownAttributes(name: countdown.name, countdownID: countdown.id.uuidString,
+                                                 accent: countdown.style.accent)
+        _ = try Activity.request(attributes: attributes,
                                  content: ActivityContent(state: state, staleDate: state.target), pushType: nil)
     }
     static func stop() async {
@@ -71,9 +77,12 @@ enum NotificationManager {
             await activity.end(nil, dismissalPolicy: .immediate)
         }
     }
-    static func reconcile(settings: TimerSettings) async {
+    /// Ends an activity whose countdown was deleted, changed or has arrived.
+    static func reconcile(countdowns: [Countdown]) async {
         for activity in Activity<LiveCountdownAttributes>.activities {
-            if activity.attributes.name != settings.name || activity.content.state.target != settings.targetDate() || activity.content.state.target <= .now {
+            let match = countdowns.first { $0.id.uuidString == activity.attributes.countdownID }
+            if match == nil || match!.name != activity.attributes.name
+                || match!.targetDate() != activity.content.state.target || activity.content.state.target <= .now {
                 await activity.end(nil, dismissalPolicy: .immediate)
             }
         }

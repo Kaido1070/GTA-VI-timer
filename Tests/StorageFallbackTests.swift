@@ -9,29 +9,37 @@ final class StorageFallbackTests: XCTestCase {
     }
     override func tearDownWithError() throws { try FileManager.default.removeItem(at: root) }
 
-    func testPersonalSigningKeepsAppSettingsAndPhotoLocally() throws {
+    func testPersonalSigningKeepsCountdownsAndPhotosLocally() throws {
         let local = root.appendingPathComponent("local")
         let store = try SettingsStore.select(sharedRoot: nil, localRoot: local)
         XCTAssertEqual(store.scope, .applicationOnly)
-        var settings = TimerSettings(); settings.name = "Personal Game"
-        let saved = try store.save(settings, newJPEG: Data([1, 2, 3]))
+        var countdown = Countdown(name: "Trip")
+        countdown.imageFilename = try store.saveImage(Data([1, 2, 3]))
+        try store.save([countdown])
         let reopened = try SettingsStore.select(sharedRoot: nil, localRoot: local)
-        XCTAssertEqual(try reopened.load(), saved)
-        XCTAssertEqual(try Data(contentsOf: XCTUnwrap(reopened.imageURL(for: saved))), Data([1, 2, 3]))
+        XCTAssertEqual(try reopened.load(), [countdown])
+        XCTAssertEqual(try Data(contentsOf: XCTUnwrap(reopened.imageURL(for: countdown))), Data([1, 2, 3]))
     }
-    func testLaterSharedSigningMigratesOnceWithoutOverwritingSharedSettings() throws {
+
+    func testLaterSharedSigningMigratesOnceWithoutOverwritingSharedData() throws {
         let local = root.appendingPathComponent("local")
         let shared = root.appendingPathComponent("shared")
         let localStore = try SettingsStore.select(sharedRoot: nil, localRoot: local)
-        var settings = TimerSettings(); settings.day = 20
-        try localStore.save(settings, newJPEG: Data([4, 5, 6]))
+        var countdown = Countdown(name: "Exam")
+        countdown.imageFilename = try localStore.saveImage(Data([4, 5, 6]))
+        try localStore.save([countdown])
+        var appearance = AppAppearance(); appearance.accent = "#FF0000"
+        try localStore.saveAppearance(appearance)
+
         let upgraded = try SettingsStore.select(sharedRoot: shared, localRoot: local)
         XCTAssertEqual(upgraded.scope, .shared)
-        XCTAssertEqual(try upgraded.load().day, 20)
-        XCTAssertEqual(try Data(contentsOf: XCTUnwrap(upgraded.imageURL(for: upgraded.load()))), Data([4, 5, 6]))
-        var sharedSettings = try upgraded.load(); sharedSettings.day = 21
-        try upgraded.save(sharedSettings)
+        XCTAssertEqual(try upgraded.load(), [countdown])
+        XCTAssertEqual(upgraded.loadAppearance().accent, "#FF0000")
+        XCTAssertEqual(try Data(contentsOf: XCTUnwrap(upgraded.imageURL(for: countdown))), Data([4, 5, 6]))
+
+        var changed = countdown; changed.name = "Exam 2"
+        try upgraded.save([changed])
         let reopened = try SettingsStore.select(sharedRoot: shared, localRoot: local)
-        XCTAssertEqual(try reopened.load().day, 21)
+        XCTAssertEqual(try reopened.load().first?.name, "Exam 2")
     }
 }

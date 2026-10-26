@@ -38,7 +38,7 @@ jobs:
           BUILD_NUMBER: ${{ inputs.build_number }}
         run: |
           if [ -n "$BUNDLE_VERSION" ] && [ -n "$BUILD_NUMBER" ]; then
-            python3 Scripts/version-unsigned-ipa.py verified/build/GTA-VI-Timer-unsigned.ipa --version "$BUNDLE_VERSION" --build "$BUILD_NUMBER"
+            python3 Scripts/version-unsigned-ipa.py verified/build/AnyTimer-unsigned.ipa --version "$BUNDLE_VERSION" --build "$BUILD_NUMBER"
           fi
       - name: Upload verified unsigned IPA
         env:
@@ -46,8 +46,8 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
           GH_REPO: Kaido1070/GTA-VI-timer
         run: |
-          test -f verified/build/GTA-VI-Timer-unsigned.ipa
-          sha256sum verified/build/GTA-VI-Timer-unsigned.ipa
+          test -f verified/build/AnyTimer-unsigned.ipa
+          sha256sum verified/build/AnyTimer-unsigned.ipa
           gh release view "$RELEASE_TAG" >/dev/null 2>&1 || \
             gh release create "$RELEASE_TAG" --target "$GITHUB_SHA" --title "$RELEASE_TAG" --notes "Unsigned IPA from verified build run ${{ inputs.run_id }}."
-          gh release upload "$RELEASE_TAG" verified/build/GTA-VI-Timer-unsigned.ipa --clobber
+          gh release upload "$RELEASE_TAG" verified/build/AnyTimer-unsigned.ipa --clobber

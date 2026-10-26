@@ -4,81 +4,89 @@ import AppIntents
 
 struct TimerEntry: TimelineEntry {
     let date: Date
-    let settings: TimerSettings
+    let countdown: Countdown?
     var storageError = false
 }
 
-struct Provider: TimelineProvider {
-    func placeholder(in context: Context) -> TimerEntry { TimerEntry(date: .now, settings: TimerSettings()) }
-    func getSnapshot(in context: Context, completion: @escaping (TimerEntry) -> Void) { completion(read()) }
-    func getTimeline(in context: Context, completion: @escaping (Timeline<TimerEntry>) -> Void) {
-        let initial = read()
-        let entries = CountdownSchedule.dates(now: initial.date, target: initial.settings.targetDate()).map {
-            TimerEntry(date: $0, settings: initial.settings, storageError: initial.storageError)
-        }
-        completion(Timeline(entries: entries, policy: .after(initial.date.addingTimeInterval(6 * 3600))))
+struct Provider: AppIntentTimelineProvider {
+    func placeholder(in context: Context) -> TimerEntry { TimerEntry(date: .now, countdown: .gtaVI) }
+    func snapshot(for configuration: SelectCountdownIntent, in context: Context) async -> TimerEntry {
+        let entry = read(configuration)
+        // The widget gallery shows an example when there is nothing to show yet.
+        return entry.countdown == nil && context.isPreview ? TimerEntry(date: .now, countdown: .gtaVI) : entry
     }
-    private func read() -> TimerEntry {
-        do { return TimerEntry(date: .now, settings: try SettingsStore.shared().load()) }
-        // Personal signing without an App Group is expected: the defaults are the
-        // intended target, so don't flag it on the widget. Warn only on bad data.
-        catch SettingsStore.Failure.groupUnavailable { return TimerEntry(date: .now, settings: TimerSettings()) }
-        catch { return TimerEntry(date: .now, settings: TimerSettings(), storageError: true) }
+    func timeline(for configuration: SelectCountdownIntent, in context: Context) async -> Timeline<TimerEntry> {
+        let initial = read(configuration)
+        guard let countdown = initial.countdown else {
+            return Timeline(entries: [initial], policy: .after(initial.date.addingTimeInterval(3600)))
+        }
+        let entries = CountdownSchedule.dates(now: initial.date, target: countdown.targetDate()).map {
+            TimerEntry(date: $0, countdown: countdown, storageError: initial.storageError)
+        }
+        return Timeline(entries: entries, policy: .after(initial.date.addingTimeInterval(6 * 3600)))
+    }
+    private func read(_ configuration: SelectCountdownIntent) -> TimerEntry {
+        do {
+            let list = try SettingsStore.shared().load()
+            return TimerEntry(date: .now, countdown: CountdownLookup.find(configuration.countdown, in: list))
+        }
+        // Personal signing without an App Group: the widget can't see the app's
+        // countdowns. Say so plainly rather than inventing one.
+        catch SettingsStore.Failure.groupUnavailable { return TimerEntry(date: .now, countdown: nil) }
+        catch { return TimerEntry(date: .now, countdown: nil, storageError: true) }
     }
 }
 
 struct TimerWidgetView: View {
     @Environment(\.widgetFamily) private var family
     let entry: TimerEntry
-    var remaining: Remaining { Remaining(target: entry.settings.targetDate(), now: entry.date) }
     var body: some View {
         Group {
-            if family == .accessoryInline {
-                Label(remaining.reached ? "\(entry.settings.name): Out now" : "\(entry.settings.name): \(remaining.days)d left", systemImage: "hourglass")
-            } else if family == .accessoryCircular {
-                ZStack {
-                    AccessoryWidgetBackground()
-                    VStack(spacing: 0) {
-                        if remaining.reached { Image(systemName: "checkmark").font(.title2) }
-                        else {
-                            Text("\(remaining.days)").font(.system(size: 23, weight: .heavy, design: .rounded)).minimumScaleFactor(0.5).lineLimit(1)
-                            Text("DAYS").font(.system(size: 9, weight: .bold))
-                        }
-                    }.padding(5)
-                }
-                .accessibilityLabel(remaining.reached ? "Out now" : "\(remaining.days) days left")
-            } else if family == .accessoryRectangular {
-                LockRectangularView(settings: entry.settings, remaining: remaining, now: entry.date, storageError: entry.storageError)
-            } else if family == .systemSmall {
-                DaysArtworkCard(settings: entry.settings, remaining: remaining)
-                    .overlay(alignment: .topTrailing) { refreshButton.padding(6) }
-                    .overlay(alignment: .topLeading) {
-                        if entry.storageError { Image(systemName: "exclamationmark.triangle.fill").padding(8).foregroundStyle(.orange) }
-                    }
+            if let countdown = entry.countdown {
+                content(countdown)
+            } else if family == .accessoryInline {
+                Label("AnyTimer", systemImage: "hourglass")
             } else {
-                HomeCountdownView(settings: entry.settings, remaining: remaining, now: entry.date,
-                                  large: family == .systemLarge, storageError: entry.storageError)
+                EmptyCountdownView(compact: family == .accessoryCircular || family == .accessoryRectangular)
             }
         }
-        .containerBackground(for: .widget) { Color.black }
-        .widgetURL(URL(string: "gtavitimer://countdown"))
-    }
-    private var refreshButton: some View {
-        Button(intent: RefreshCountdownIntent()) {
-            Image(systemName: "arrow.clockwise").font(.caption.bold()).foregroundStyle(.white)
-                .padding(6).background(.black.opacity(0.5), in: Circle())
+        .containerBackground(for: .widget) {
+            if let countdown = entry.countdown { countdown.style.backgroundColor } else { Color.black }
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel("تحديث العدّاد من الإعدادات المحلية")
+        .widgetURL(URL(string: "gtavitimer://countdown/\(entry.countdown?.id.uuidString ?? "")"))
+    }
+
+    @ViewBuilder private func content(_ countdown: Countdown) -> some View {
+        let remaining = Remaining(target: countdown.targetDate(), now: entry.date)
+        switch family {
+        case .accessoryInline:
+            Label(remaining.reached ? "\(countdown.name): Now" : "\(countdown.name): \(remaining.days)d left", systemImage: "hourglass")
+        case .accessoryCircular:
+            ZStack {
+                AccessoryWidgetBackground()
+                VStack(spacing: 0) {
+                    if remaining.reached { Image(systemName: "checkmark").font(.title2) }
+                    else {
+                        Text(verbatim: String(remaining.days)).font(countdown.style.font.font(23)).minimumScaleFactor(0.5).lineLimit(1)
+                        Text("DAYS").font(.system(size: 9, weight: .bold))
+                    }
+                }.padding(5)
+            }
+            .accessibilityLabel(remaining.reached ? "\(countdown.name), now" : "\(countdown.name), \(remaining.days) days left")
+        case .accessoryRectangular:
+            LockRectangularView(countdown: countdown, now: entry.date, storageError: entry.storageError)
+        default:
+            HomeCountdownView(countdown: countdown, now: entry.date, family: family, storageError: entry.storageError)
+        }
     }
 }
 
 struct TimerWidget: Widget {
     let kind = "GTAVITimerWidget"
     var body: some WidgetConfiguration {
-        StaticConfiguration(kind: kind, provider: Provider()) { TimerWidgetView(entry: $0) }
-            .configurationDisplayName("GTA VI Timer")
-            .description("الأيام الكاملة المتبقية حتى بداية الموعد المحلي.")
+        AppIntentConfiguration(kind: kind, intent: SelectCountdownIntent.self, provider: Provider()) { TimerWidgetView(entry: $0) }
+            .configurationDisplayName("AnyTimer")
+            .description("اختر أي عدّاد لعرضه. اضغط مطولًا على الودجت > تحرير لتغيير العدّاد.")
             .supportedFamilies([.systemSmall, .systemMedium, .systemLarge, .accessoryRectangular, .accessoryCircular, .accessoryInline])
             .contentMarginsDisabled()
     }

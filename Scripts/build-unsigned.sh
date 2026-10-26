@@ -10,5 +10,5 @@ test -d "$APP/PlugIns/TimerWidget.appex"
 test -f "$APP/PlugIns/TimerWidget.appex/TimerWidget"
 mkdir -p build/package/Payload
 cp -R "$APP" build/package/Payload/
-(cd build/package && zip -qr ../GTA-VI-Timer-unsigned.ipa Payload)
+(cd build/package && zip -qr ../AnyTimer-unsigned.ipa Payload)
 echo 'Created unsigned IPA; requires signing of the app AND its embedded widget before installation.'

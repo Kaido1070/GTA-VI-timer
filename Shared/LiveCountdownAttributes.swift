@@ -7,6 +7,8 @@ struct LiveCountdownAttributes: ActivityAttributes {
         var startedAt: Date
     }
     var name: String
+    var countdownID: String = ""
+    var accent: String = "#D6A84E"
 }
 
 enum LiveCountdownEligibility {

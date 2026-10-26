@@ -9,8 +9,8 @@ settings:
     DEVELOPMENT_TEAM: ''
     APP_GROUP_IDENTIFIER: group.com.kaido1070.gtavitimer
     TARGETED_DEVICE_FAMILY: '1'
-    MARKETING_VERSION: '1.5'
-    CURRENT_PROJECT_VERSION: '6'
+    MARKETING_VERSION: '2.0'
+    CURRENT_PROJECT_VERSION: '7'
 targets:
   GTAVITimer:
     type: application
@@ -24,7 +24,7 @@ targets:
     info:
       path: App/Info.plist
       properties:
-        CFBundleDisplayName: GTA VI Timer
+        CFBundleDisplayName: AnyTimer
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
@@ -56,7 +56,7 @@ targets:
     info:
       path: Widget/Info.plist
       properties:
-        CFBundleDisplayName: GTA VI Timer
+        CFBundleDisplayName: AnyTimer
         CFBundleShortVersionString: $(MARKETING_VERSION)
         CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         AppGroupIdentifier: $(APP_GROUP_IDENTIFIER)
