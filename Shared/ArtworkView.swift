@@ -110,13 +110,14 @@ struct LockRectangularView: View {
                             .lineLimit(1).minimumScaleFactor(0.5)
                     } else {
                         HStack(alignment: .firstTextBaseline, spacing: 3) {
-                            Text("\(remaining.days)")
+                            Text(verbatim: String(remaining.days))
                                 .font(.system(size: 28, weight: .heavy, design: .rounded))
                                 .monospacedDigit()
                                 .widgetAccentable()
+                                .lineLimit(1).minimumScaleFactor(0.5)
                             Text(remaining.days == 1 ? "DAY" : "DAYS").font(.system(size: 13, weight: .bold))
+                                .lineLimit(1).fixedSize()
                         }
-                        .lineLimit(1).minimumScaleFactor(0.5)
                         // Hours:minutes:seconds left in the current day, ticking live.
                         // The timeline reloads at each day boundary to roll the day count.
                         Text(timerInterval: now...dayBoundary, countsDown: true)
