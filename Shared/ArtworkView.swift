@@ -36,6 +36,7 @@ struct ArtworkView: View {
     let settings: TimerSettings
     var maximumPixelSize = 1200
     var blurredFill = true
+    var fill = false
     var body: some View {
         GeometryReader { geometry in
             let artwork = ArtworkLoader.load(settings: settings, maximumPixelSize: maximumPixelSize)
@@ -43,7 +44,7 @@ struct ArtworkView: View {
             ZStack {
                 Color.black
                 if blurredFill { artwork.resizable().scaledToFill().blur(radius: 18).opacity(0.6) }
-                artwork.resizable().scaledToFit()
+                if fill { artwork.resizable().scaledToFill() } else { artwork.resizable().scaledToFit() }
             }
             .frame(width: geometry.size.width, height: geometry.size.height)
             .clipped()
@@ -158,9 +159,24 @@ struct HomeCountdownView: View {
             LinearGradient(colors: [Color(red: 0.16, green: 0.09, blue: 0.30), Color(red: 0.05, green: 0.03, blue: 0.10)],
                            startPoint: .topLeading, endPoint: .bottomTrailing)
             if large {
-                VStack(spacing: 12) {
-                    artwork
-                    countdown(daySize: 46, timerSize: 26)
+                VStack(spacing: 14) {
+                    ArtworkView(settings: settings, maximumPixelSize: 700, blurredFill: false, fill: true)
+                        .clipShape(RoundedRectangle(cornerRadius: 18))
+                        .shadow(color: .black.opacity(0.5), radius: 6, y: 3)
+                    HStack(alignment: .bottom) {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(settings.name).font(.system(size: 20, weight: .heavy)).lineLimit(1).minimumScaleFactor(0.6)
+                            dateText
+                            if storageError {
+                                Text("Settings unreadable").font(.system(size: 11)).foregroundStyle(.orange)
+                            }
+                        }
+                        Spacer(minLength: 8)
+                        VStack(alignment: .trailing, spacing: 0) {
+                            timeLeft(daySize: 40, timerSize: 22)
+                        }
+                    }
+                    .frame(height: 76)
                 }
                 .padding(14)
             } else {
@@ -178,7 +194,7 @@ struct HomeCountdownView: View {
     }
 
     private var artwork: some View {
-        ArtworkView(settings: settings, maximumPixelSize: large ? 700 : 400, blurredFill: false)
+        ArtworkView(settings: settings, maximumPixelSize: 400, blurredFill: false)
             .aspectRatio(1, contentMode: .fit)
             .clipShape(RoundedRectangle(cornerRadius: 16))
             .shadow(color: .black.opacity(0.5), radius: 6, y: 3)
@@ -189,37 +205,46 @@ struct HomeCountdownView: View {
             Text(settings.name)
                 .font(.system(size: 17, weight: .heavy))
                 .lineLimit(1).minimumScaleFactor(0.6)
-            Text(settings.targetDate(), format: .dateTime.day().month(.abbreviated).year())
-                .font(.system(size: 12, weight: .medium))
-                .foregroundStyle(.white.opacity(0.7))
-                .environment(\.locale, Locale(identifier: "en_US"))
+            dateText
             Spacer(minLength: 4)
-            if remaining.reached {
-                Text("OUT NOW")
-                    .font(.system(size: daySize * 0.75, weight: .heavy, design: .rounded))
-                    .foregroundStyle(accent)
-                    .lineLimit(1).minimumScaleFactor(0.5)
-            } else {
-                HStack(alignment: .firstTextBaseline, spacing: 5) {
-                    Text(verbatim: String(remaining.days))
-                        .font(.system(size: remaining.days >= 1000 ? daySize * 0.7 : daySize, weight: .heavy, design: .rounded))
-                        .foregroundStyle(accent)
-                    Text(remaining.days == 1 ? "DAY" : "DAYS")
-                        .font(.system(size: 14, weight: .bold))
-                        .fixedSize()
-                }
-                .lineLimit(1)
-                // Live hours:minutes:seconds within the current day; the timeline
-                // reloads at each day boundary to roll the day count.
-                Text(timerInterval: now...dayBoundary, countsDown: true)
-                    .font(.system(size: timerSize, weight: .semibold, design: .rounded))
-                    .monospacedDigit()
-                    .lineLimit(1).minimumScaleFactor(0.6)
-            }
+            timeLeft(daySize: daySize, timerSize: timerSize)
             if storageError {
                 Text("Settings unreadable").font(.system(size: 11)).foregroundStyle(.orange)
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+    }
+
+    private var dateText: some View {
+        Text(settings.targetDate(), format: .dateTime.day().month(.abbreviated).year())
+            .font(.system(size: 12, weight: .medium))
+            .foregroundStyle(.white.opacity(0.7))
+            .environment(\.locale, Locale(identifier: "en_US"))
+    }
+
+    @ViewBuilder private func timeLeft(daySize: CGFloat, timerSize: CGFloat) -> some View {
+        if remaining.reached {
+            Text("OUT NOW")
+                .font(.system(size: daySize * 0.75, weight: .heavy, design: .rounded))
+                .foregroundStyle(accent)
+                .lineLimit(1).minimumScaleFactor(0.5)
+        } else {
+            HStack(alignment: .firstTextBaseline, spacing: 5) {
+                Text(verbatim: String(remaining.days))
+                    .font(.system(size: remaining.days >= 1000 ? daySize * 0.7 : daySize, weight: .heavy, design: .rounded))
+                    .foregroundStyle(accent)
+                Text(remaining.days == 1 ? "DAY" : "DAYS")
+                    .font(.system(size: 14, weight: .bold))
+                    .fixedSize()
+            }
+            .lineLimit(1)
+            // Live hours:minutes:seconds within the current day; the timeline
+            // reloads at each day boundary to roll the day count.
+            Text(timerInterval: now...dayBoundary, countsDown: true)
+                .font(.system(size: timerSize, weight: .semibold, design: .rounded))
+                .monospacedDigit()
+                .multilineTextAlignment(large ? .trailing : .leading)
+                .lineLimit(1).minimumScaleFactor(0.6)
+        }
     }
 }
