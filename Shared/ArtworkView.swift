@@ -82,48 +82,49 @@ struct DaysArtworkCard: View {
     }
 }
 
-// Lock-screen accessoryRectangular content. Fills the whole rectangle; fixed
-// point sizes keep the layout stable, and vibrant mode makes artwork
-// unreadable here, so it is text only.
+// Lock-screen accessoryRectangular content: the artwork as a full-height square
+// tile plus large text filling the rest of the rectangle. Fixed point sizes
+// keep the layout stable. The system renders the lock screen vibrantly, so the
+// artwork appears as a tinted, semi-transparent image there.
 struct LockRectangularView: View {
     let settings: TimerSettings
     let remaining: Remaining
     var storageError = false
     var body: some View {
-        ZStack {
-            AccessoryWidgetBackground()
-            HStack(spacing: 0) {
+        GeometryReader { geometry in
+            HStack(spacing: 8) {
+                ArtworkView(settings: settings, maximumPixelSize: 240, blurredFill: false)
+                    .frame(width: geometry.size.height, height: geometry.size.height)
+                    .clipShape(RoundedRectangle(cornerRadius: 10))
                 VStack(alignment: .leading, spacing: 0) {
                     Text(settings.name)
                         .font(.system(size: 14, weight: .bold))
                         .lineLimit(1).minimumScaleFactor(0.6)
                     if remaining.reached {
                         Text("وصل الموعد")
-                            .font(.system(size: 24, weight: .heavy, design: .rounded))
+                            .font(.system(size: 22, weight: .heavy, design: .rounded))
                             .lineLimit(1).minimumScaleFactor(0.5)
                     } else {
-                        HStack(alignment: .firstTextBaseline, spacing: 4) {
+                        HStack(alignment: .firstTextBaseline, spacing: 3) {
                             Text("\(remaining.days)")
                                 .font(.system(size: 30, weight: .heavy, design: .rounded))
                                 .monospacedDigit()
                                 .widgetAccentable()
-                            Text("يوم متبقٍ").font(.system(size: 14, weight: .semibold))
+                            Text("يوم").font(.system(size: 15, weight: .semibold))
                         }
                         .lineLimit(1).minimumScaleFactor(0.5)
                     }
                     Group {
                         if storageError { Text("تعذّرت قراءة الإعدادات") }
-                        else { Text(settings.targetDate(), format: .dateTime.day().month(.wide).year()) }
+                        else { Text(settings.targetDate(), format: .dateTime.day().month(.abbreviated).year()) }
                     }
                     .font(.system(size: 12, weight: .medium))
                     .lineLimit(1).minimumScaleFactor(0.6)
                 }
                 Spacer(minLength: 0)
             }
-            .padding(.horizontal, 10)
-            .padding(.vertical, 2)
         }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .accessibilityElement(children: .combine)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(remaining.reached ? "\(settings.name)، وصل الموعد" : "\(settings.name)، \(remaining.days) يوم متبقٍ")
     }
 }
