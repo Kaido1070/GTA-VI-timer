@@ -110,8 +110,9 @@ struct LockRectangularView: View {
                             .lineLimit(1).minimumScaleFactor(0.5)
                     } else {
                         HStack(alignment: .firstTextBaseline, spacing: 3) {
+                            // Scale factors don't shrink reliably inside this row; size by digit count.
                             Text(verbatim: String(remaining.days))
-                                .font(.system(size: 28, weight: .heavy, design: .rounded))
+                                .font(.system(size: remaining.days >= 1000 ? 20 : 28, weight: .heavy, design: .rounded))
                                 .monospacedDigit()
                                 .widgetAccentable()
                                 .lineLimit(1).minimumScaleFactor(0.5)
