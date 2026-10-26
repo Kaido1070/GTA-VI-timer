@@ -213,7 +213,7 @@ struct HomeCountdownView: View {
         }
         .environment(\.layoutDirection, .leftToRight)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibility(countdown, now: now))
+        .accessibilityLabel(spokenSummary(countdown, now: now))
     }
 }
 
@@ -268,7 +268,7 @@ struct LockRectangularView: View {
         }
         .environment(\.layoutDirection, .leftToRight)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibility(countdown, now: now))
+        .accessibilityLabel(spokenSummary(countdown, now: now))
     }
     /// Keep the font, but let the system tint everything on the lock screen.
     private var lockStyled: Countdown {
@@ -278,7 +278,7 @@ struct LockRectangularView: View {
     }
 }
 
-private func accessibility(_ countdown: Countdown, now: Date) -> String {
+private func spokenSummary(_ countdown: Countdown, now: Date) -> String {
     let remaining = Remaining(target: countdown.targetDate(), now: now)
     return remaining.reached ? "\(countdown.name), now" : "\(countdown.name), \(remaining.days) days left"
 }
@@ -312,6 +312,6 @@ struct CountdownCard: View {
         .clipShape(RoundedRectangle(cornerRadius: 24))
         .environment(\.layoutDirection, .leftToRight)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(accessibility(countdown, now: now))
+        .accessibilityLabel(spokenSummary(countdown, now: now))
     }
 }
